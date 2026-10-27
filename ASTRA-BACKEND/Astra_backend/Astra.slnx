@@ -1,0 +1,13 @@
+<Solution>
+  <Project Path="Astra.Shared/Astra.Shared.csproj" />
+  <Project Path="AuthService.API/AuthService.API.csproj" />
+  <Project Path="TicketService.API/TicketService.API.csproj" />
+  <Project Path="CoreDataService.API/CoreDataService.API.csproj" />
+  <Project Path="AdministrationService.API/AdministrationService.API.csproj" />
+  <Project Path="GroupService.API/GroupService.API.csproj" />
+  <Project Path="ClientDomainService.API/ClientDomainService.API.csproj" />
+  <Project Path="SlaService.API/SlaService.API.csproj" />
+  <Project Path="ProblemService.API/ProblemService.API.csproj" />
+  <Project Path="NotificationService.API/NotificationService.API.csproj" />
+  <Project Path="ReportService.API/ReportService.API.csproj" />
+</Solution>
