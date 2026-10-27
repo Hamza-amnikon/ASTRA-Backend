@@ -1,0 +1,17 @@
+.work/
+**/node_modules/
+**/dist/
+**/bin/
+**/obj/
+**/playwright-report/
+**/test-results/
+**/.env
+**/.env.local
+**/.env.*.local
+**/appsettings.*.local.json
+**/runtime.env
+.run/
+**/runtime.env.*
+!**/runtime.env.example
+**/__pycache__/
+**/*.pyc

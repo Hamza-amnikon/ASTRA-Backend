@@ -1,0 +1,16 @@
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.Hosting;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Hosting;
+global using Microsoft.Extensions.Logging;
+global using Astra.Shared.Configuration;
+global using Astra.Shared.Data;
+global using Astra.Shared.Models;
+global using Astra.Shared.Security;
+global using Astra.Shared.Services;
+global using Astra.Shared.Controllers;
+global using Astra.Shared.Middleware;
+global using TicketService.API.Services;
+global using TicketService.API.DTOs;
