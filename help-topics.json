@@ -1,0 +1,1022 @@
+[
+  {
+    "id": "sign-in",
+    "title": "Sign in and choose a workspace",
+    "summary": "Sign in with Microsoft and open the workspace that matches your approved role.",
+    "steps": [
+      "Open the Service Desk and select Sign in with Microsoft.",
+      "After authentication, review the workspaces available to your account: Client portal, Technician workspace, Management workspace, or Administration.",
+      "Open only the workspace you are authorized to use.",
+      "If a required workspace is missing, ask an administrator to review your role, client/site scope, and permissions."
+    ],
+    "href": "/",
+    "audience": "everyone",
+    "section": "Getting Started",
+    "keywords": "login microsoft entra workspace role access",
+    "notes": [
+      "Access is role- and scope-controlled; changing screens does not bypass authorization."
+    ]
+  },
+  {
+    "id": "workspace-navigation",
+    "title": "Navigate the Service Desk",
+    "summary": "Use the shared navigation, notification area, workspace switcher, Help, and sign-out controls.",
+    "steps": [
+      "Use the left navigation to open the sections available to your role.",
+      "Use Switch workspace to move between Client, Technician, Management, or Administration areas you can access.",
+      "Use Notifications in staff workspaces to review ticket-related alerts such as assignment or transfer activity.",
+      "Open Help for the User Guide and, for eligible staff, the troubleshooting search tool.",
+      "Use Sign out when you finish working on a shared or administrative workstation."
+    ],
+    "href": "/help",
+    "audience": "everyone",
+    "section": "Getting Started",
+    "keywords": "navigation sidebar workspace switch notifications help sign out",
+    "notes": [
+      "The navigation shown to you changes with your role and permissions."
+    ]
+  },
+  {
+    "id": "client-request",
+    "title": "Create a support request",
+    "summary": "Submit a new support request with the requester, organization, site, category, impact details, and supporting files.",
+    "steps": [
+      "Open My support and choose the new support request area.",
+      "Select the requester and the organization; select a site when the issue is location-specific.",
+      "Choose the appropriate category.",
+      "Enter the subject and describe the problem, impact, when it started, and what has already been tried.",
+      "Add relevant screenshots or files when they help explain the issue.",
+      "Submit the request and keep the ticket number for follow-up."
+    ],
+    "href": "/client",
+    "audience": "client",
+    "section": "Client Portal",
+    "keywords": "client portal new request ticket organization site category attachment",
+    "notes": [
+      "Client-submitted attachments are requester-visible ticket content."
+    ]
+  },
+  {
+    "id": "client-tickets",
+    "title": "Find and review your support tickets",
+    "summary": "Search your client-visible tickets and review status, updates, SLA information, conversation, and public attachments.",
+    "steps": [
+      "Open My support tickets.",
+      "Use the ticket list to find a request or refresh the current data.",
+      "Open a ticket to review its organization, site, status, and current activity.",
+      "Review the Conversation section for requester-visible updates and replies.",
+      "Check the ticket SLA information shown in the client view when available.",
+      "Open any ticket attachment that has been made visible to the client portal."
+    ],
+    "href": "/client",
+    "audience": "client",
+    "section": "Client Portal",
+    "keywords": "client tickets status conversation sla attachments history",
+    "notes": [
+      "Client users see only the ticket information their account is authorized to access."
+    ]
+  },
+  {
+    "id": "client-reply",
+    "title": "Reply to a client ticket",
+    "summary": "Add a requester-visible reply to an existing support request and optionally attach supporting files.",
+    "steps": [
+      "Open the ticket from My support tickets.",
+      "Review the latest conversation before replying.",
+      "Enter your reply in the conversation field.",
+      "Add a file when the service desk needs a screenshot, error message, log extract, or other evidence.",
+      "Submit the reply and confirm the new message appears in the conversation."
+    ],
+    "href": "/client",
+    "audience": "client",
+    "section": "Client Portal",
+    "keywords": "client reply conversation public attachment screenshot",
+    "notes": [
+      "Client replies are public ticket updates; there is no client-side internal-note control."
+    ]
+  },
+  {
+    "id": "catalogue",
+    "title": "Use the service catalogue",
+    "summary": "Start a request from a published service template when the service desk has provided one.",
+    "steps": [
+      "Open Service catalogue.",
+      "Search or browse the available published service entries.",
+      "Open a service entry and review its description and guidance before starting the request.",
+      "Use the request action to start a support ticket from the selected template.",
+      "Complete the ticket details and submit the request."
+    ],
+    "href": "/catalogue",
+    "audience": "everyone",
+    "section": "Client Portal",
+    "keywords": "service catalogue service template request standard service",
+    "notes": [
+      "Published catalogue content can be available to both client users and staff; the request action opens the appropriate ticket workflow for your role."
+    ]
+  },
+  {
+    "id": "client-knowledge",
+    "title": "Read published knowledge articles",
+    "summary": "Search the published knowledge base for guidance that is available to your account.",
+    "steps": [
+      "Open Knowledge base.",
+      "Search for a symptom, product, service, or task.",
+      "Open an article and review its instructions and visibility.",
+      "Follow the documented procedure that applies to your situation.",
+      "For staff, use a relevant article to support the ticket resolution and link it to the ticket when appropriate."
+    ],
+    "href": "/knowledge",
+    "audience": "everyone",
+    "section": "Client Portal",
+    "keywords": "knowledge base article search guidance self service",
+    "notes": [
+      "Only published articles within your authorized visibility are shown."
+    ]
+  },
+  {
+    "id": "technician-overview",
+    "title": "Technician overview and queues",
+    "summary": "Use the Technician workspace to review queue health, recently updated work, and ticket activity.",
+    "steps": [
+      "Open Technician workspace.",
+      "Review the overview metrics and recently updated tickets.",
+      "Open Tickets to work from the ticket queue or workflow board.",
+      "Use the queue as the working list for tickets within your assigned client/site scope.",
+      "Open a ticket to see its complete detail and available controls."
+    ],
+    "href": "/operations",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "technician dashboard queue overview workload tickets",
+    "notes": [
+      "Intern, Technician, Team Lead, Manager, and Administrator roles can have staff workspace access, but available actions still depend on permissions and scope."
+    ]
+  },
+  {
+    "id": "ticket-search-filters",
+    "title": "Search tickets and use filters",
+    "summary": "Find tickets by text, status, priority, client, site, assignee, category, source, tag, SLA state, dates, and location.",
+    "steps": [
+      "Open Tickets in the Technician workspace.",
+      "Enter ticket number, subject, requester, client, site, or other supported text in Search tickets.",
+      "Add filters such as status, priority, client, site, assigned technician, category, source, tag, or SLA status.",
+      "Use Created from and Created to when you need a time range.",
+      "Use Location / project when the record contains an office, room, project, or work area.",
+      "Run the search and open the ticket that matches the required scope."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "ticket search filter status priority client site assignee category source tag sla date location",
+    "notes": [
+      "Search respects the access scope enforced by the server."
+    ]
+  },
+  {
+    "id": "saved-views",
+    "title": "Save and reuse ticket views",
+    "summary": "Save a useful combination of ticket filters as a named view for repeat queue work.",
+    "steps": [
+      "Build the ticket search and filters you use regularly.",
+      "Enter a name in the saved-view field.",
+      "Save the view.",
+      "Select a saved view later to restore the same search criteria.",
+      "Delete a saved view when it is no longer useful."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "saved view ticket filter queue reusable search",
+    "notes": [
+      "Saved views belong to the user who created them."
+    ]
+  },
+  {
+    "id": "team-tickets",
+    "title": "Work the team ticket queue",
+    "summary": "Use the Team Tickets view to work tickets that fall within team-level access.",
+    "steps": [
+      "Open Team Tickets from the staff workspace when it is available to your role.",
+      "Review the client/site, status, priority, assignment, and SLA indicators.",
+      "Use search and filters to narrow the team queue.",
+      "Open a ticket to work it or use the assignment controls provided by your role.",
+      "Keep the ticket state and assignment accurate so the queue remains actionable."
+    ],
+    "href": "/operations/team-tickets",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "team tickets team queue assignments workload",
+    "notes": [
+      "Team access is controlled by role, permissions, client scope, site scope, and assignment rules."
+    ]
+  },
+  {
+    "id": "internal-tickets",
+    "title": "Work internal tickets",
+    "summary": "Create and work internal-organization tickets that do not belong to a client-facing organization.",
+    "steps": [
+      "Open Internal Tickets when your role is permitted to use internal work.",
+      "Review the internal ticket queue and open the required record.",
+      "Use the department and internal routing information where provided.",
+      "Update the ticket, add internal notes, request specialist help, or assign the work according to your role.",
+      "Keep internal ticket content separate from client-facing communication."
+    ],
+    "href": "/operations/internal-tickets",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "internal ticket department internal work",
+    "notes": [
+      "Internal tickets require a department in the application workflow."
+    ]
+  },
+  {
+    "id": "create-ticket",
+    "title": "Create a technician ticket",
+    "summary": "Create a ticket manually when a request arrives through a phone call, meeting, Teams reference, or another supported source.",
+    "steps": [
+      "Open New ticket from the Technician workspace.",
+      "Select the requester; search by name or email when necessary.",
+      "If the requester does not exist, use Add requester and enter the required identity details.",
+      "Select the organization and site or location as appropriate.",
+      "Enter subject, description, source, source reference, priority, category, and other required ticket information.",
+      "Add files when evidence is available and choose the correct attachment visibility.",
+      "Submit the ticket and confirm the generated ticket number."
+    ],
+    "href": "/operations/new",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "create ticket manual phone teams requester source priority category",
+    "notes": [
+      "The requester must be associated with the appropriate client scope."
+    ]
+  },
+  {
+    "id": "requester",
+    "title": "Find or add a requester",
+    "summary": "Use the requester picker when creating a ticket and add a new requester only when the person is not already available.",
+    "steps": [
+      "In the ticket form, start typing the requester name or email.",
+      "Select the correct existing requester from the matching results.",
+      "When no match exists, choose Add requester.",
+      "Enter the requester name and email; provide a phone number when needed.",
+      "Save the new requester and continue creating the ticket."
+    ],
+    "href": "/operations/new",
+    "audience": "staff",
+    "section": "Technician Workspace",
+    "keywords": "requester contact add user contact search email phone",
+    "notes": [
+      "Verify the organization/client association before using the requester on the ticket."
+    ]
+  },
+  {
+    "id": "ticket-review",
+    "title": "Review a ticket before taking action",
+    "summary": "Read the ticket context, history, SLA, assignment, collaboration, approvals, knowledge links, and attachments before changing it.",
+    "steps": [
+      "Open the ticket and confirm the ticket number and subject.",
+      "Review requester, client, site, source, location or project, and current assignment.",
+      "Read the conversation and activity timeline before replying or changing the ticket.",
+      "Check SLA response and resolution targets and note whether the ticket is on track, at risk, breached, paused, or met.",
+      "Review linked knowledge, collaboration/help requests, approvals, and attachments.",
+      "Decide the next action and record it using the appropriate ticket control."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "ticket detail review context sla history assignment knowledge collaboration approval attachments",
+    "notes": [
+      "Open only tickets within your authorized scope; the API enforces visibility when a ticket is opened."
+    ]
+  },
+  {
+    "id": "ticket-controls",
+    "title": "Update ticket status, priority, category and tags",
+    "summary": "Keep the ticket classification and workflow state accurate as work progresses.",
+    "steps": [
+      "Open the ticket and use Ticket controls.",
+      "Update Status when the work moves between the available workflow states.",
+      "Set Priority to reflect the urgency defined by your service-desk process.",
+      "Set or correct Category so the ticket is reported and measured correctly.",
+      "Add or change Tags when the ticket needs operational classification.",
+      "Save the change and review the updated SLA and ticket history."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "ticket status priority category tags controls update workflow",
+    "notes": [
+      "Changing priority can recalculate SLA targets according to the configured policy."
+    ]
+  },
+  {
+    "id": "claim-assign-transfer",
+    "title": "Claim, assign and transfer tickets",
+    "summary": "Take ownership of unassigned work or move an assigned ticket to another technician or team.",
+    "steps": [
+      "Open an unassigned ticket and choose Claim ticket when you are allowed to own it.",
+      "To assign or transfer, open Assignment and select the target technician allowed by your scope.",
+      "Enter a transfer reason when the form requires one.",
+      "Save the assignment and review the resulting ticket history or notification.",
+      "After a transfer, confirm that the new owner and queue are correct."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "claim assign transfer ownership technician team",
+    "notes": [
+      "Interns cannot assign or transfer tickets in the application."
+    ]
+  },
+  {
+    "id": "replies-notes",
+    "title": "Add public replies and internal notes",
+    "summary": "Choose public replies for requester-visible communication and internal notes for service-desk-only work.",
+    "steps": [
+      "Open the ticket conversation area.",
+      "Choose Public reply when the requester should see the message.",
+      "Choose Internal note when the information is for staff only.",
+      "Write a clear update that states the action taken, result, next step, or information needed.",
+      "Submit the message and review the activity timeline.",
+      "For public replies, confirm the reply is queued for requester email when outbound email is enabled."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "public reply internal note comment conversation requester email",
+    "notes": [
+      "Internal notes are not requester-visible and do not send a requester email."
+    ]
+  },
+  {
+    "id": "ticket-attachments",
+    "title": "Add and manage ticket attachments",
+    "summary": "Attach evidence to tickets and choose whether each file is staff-only or visible in the client portal.",
+    "steps": [
+      "Open the ticket and use Attachments.",
+      "Select a supported file and upload it.",
+      "Keep each attachment within the application size limit of 5 MB.",
+      "Choose Staff only for internal evidence or Visible in the client portal when the requester should be able to access it.",
+      "Confirm the attachment appears in the ticket and review its visibility."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "ticket attachment file upload visibility public internal 5 mb",
+    "notes": [
+      "Do not place passwords, secrets, or unrelated personal data into ticket attachments."
+    ]
+  },
+  {
+    "id": "collaboration-help",
+    "title": "Request specialist help and collaborate",
+    "summary": "Ask a specialist or department to assist with a ticket and track the collaboration request.",
+    "steps": [
+      "Open Collaboration & help on the ticket.",
+      "Choose either a specialist person or a department.",
+      "Describe the exact expertise, review, or action you need.",
+      "Submit the help request and wait for the response.",
+      "When the request is accepted, review the resulting collaborator or response information.",
+      "Continue to document the technical work in the ticket timeline."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "collaboration specialist help request department expert assistance",
+    "notes": [
+      "Specialist-help routing uses internal department membership and expertise information."
+    ]
+  },
+  {
+    "id": "ticket-approval",
+    "title": "Request and record ticket approvals",
+    "summary": "Use the ticket approval control when a management decision is required.",
+    "steps": [
+      "Open the ticket and review the work and evidence before requesting approval.",
+      "Choose Request approval and enter a clear reason for the decision needed.",
+      "Submit the request and confirm the ticket shows a pending approval state.",
+      "An authorized approver opens the approval control, reviews the request, and records the decision and decision note.",
+      "After the decision, review the ticket history and approval state before continuing work."
+    ],
+    "href": "/operations/tickets",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "ticket approval request approve reject decision management",
+    "notes": [
+      "Interns cannot request ticket approval; approval decisions require the configured ticket approval permission."
+    ]
+  },
+  {
+    "id": "notifications",
+    "title": "Review ticket notifications",
+    "summary": "Use the notification center to review assignment and ticket-work alerts.",
+    "steps": [
+      "Open the notification center from a staff workspace header.",
+      "Review unread ticket notifications such as assignments and transfers.",
+      "Open the related ticket from the notification when you need to take action.",
+      "Return to the ticket queue after handling the notification."
+    ],
+    "href": "/operations",
+    "audience": "staff",
+    "section": "Tickets",
+    "keywords": "notifications alerts assignment transfer ticket",
+    "notes": [
+      "Notification availability depends on the user role and the event generated by the ticket workflow."
+    ]
+  },
+  {
+    "id": "knowledge-staff",
+    "title": "Search and manage knowledge from a ticket",
+    "summary": "Use the Knowledge base to find relevant published or staff-visible procedures and link useful articles to tickets.",
+    "steps": [
+      "Open Knowledge base and search by symptom, product, service, or task.",
+      "Review the article content and visibility before using it.",
+      "When the article is relevant to the ticket, open the ticket and use Find and link an article.",
+      "Select the relevant article and verify it appears under Linked knowledge.",
+      "Use the linked article to support a repeatable resolution or client explanation."
+    ],
+    "href": "/knowledge",
+    "audience": "staff",
+    "section": "Knowledge & Troubleshooting",
+    "keywords": "knowledge article link ticket published staff client procedure",
+    "notes": [
+      "Knowledge articles can have category, visibility, publication status, and ticket-link relationships."
+    ]
+  },
+  {
+    "id": "troubleshooting-help",
+    "title": "Use approved web troubleshooting help",
+    "summary": "Search general troubleshooting sources from the Help bubble without sending client-specific or sensitive information to the search service.",
+    "steps": [
+      "Open the Help bubble in a technician, team-lead, manager, or administrator workspace.",
+      "Describe the general symptom and environment without using client names, ticket numbers, hostnames, IP addresses, URLs, credentials, or personal data.",
+      "Run Find troubleshooting steps.",
+      "Review the returned sources and extracted procedures before acting.",
+      "Verify the procedure against your approved internal guidance and record relevant findings in the ticket."
+    ],
+    "href": "/help",
+    "audience": "staff",
+    "section": "Knowledge & Troubleshooting",
+    "keywords": "help web search troubleshooting approved sources brave searxng",
+    "notes": [
+      "Web guidance requires configuration and is limited to general troubleshooting prompts. The application rejects prompts containing ticket numbers, addresses, IPs, URLs, credentials, or personal data."
+    ]
+  },
+  {
+    "id": "email-intake",
+    "title": "Review incoming email intake",
+    "summary": "Use Email administration to inspect messages that need review before they are linked to tickets or turned into new tickets.",
+    "steps": [
+      "Open Email administration and review the Delivery and reply processing table.",
+      "Look for messages in REVIEW, FAILED, or UNKNOWN states.",
+      "Open Review for the message that needs attention.",
+      "Read the sender, subject, body, state, and available attachment information.",
+      "Choose the appropriate review action: ignore the message or attach it to an existing ticket/change when supported.",
+      "Enter a review reason and record the decision."
+    ],
+    "href": "/admin/email",
+    "audience": "admin",
+    "section": "Email",
+    "keywords": "email intake review incoming message review queue unknown failed ticket",
+    "notes": [
+      "Ambiguous inbound mail is intentionally routed to review rather than being attached to the wrong record."
+    ]
+  },
+  {
+    "id": "email-create-ticket",
+    "title": "Create a ticket from an inbound email",
+    "summary": "Create a ticket from an inbound message when automatic matching did not create one.",
+    "steps": [
+      "Open an inbound ticket-channel message that is in REVIEW.",
+      "Choose Create a ticket from this email.",
+      "Select the organization that owns the message.",
+      "Select the saved requester whose email matches the sender.",
+      "Select the site when the message is location-specific.",
+      "Select the ticket category.",
+      "Create the ticket and confirm the email is associated with it."
+    ],
+    "href": "/admin/email",
+    "audience": "admin",
+    "section": "Email",
+    "keywords": "email create ticket manual intake requester client site category",
+    "notes": [
+      "The intake form asks you to match the sender to a saved contact before creating the ticket."
+    ]
+  },
+  {
+    "id": "email-timeline",
+    "title": "Review email delivery and reply history",
+    "summary": "Use email delivery records and ticket mail timelines to understand inbound and outbound processing.",
+    "steps": [
+      "Open Email administration to see mailbox synchronization timestamps and message states.",
+      "Use Review for messages in REVIEW, FAILED, or UNKNOWN states.",
+      "Open a ticket or change email timeline when you need the message history associated with that record.",
+      "Review the message direction, channel, subject, state, and error code before retrying or relinking it.",
+      "For uncertain outbound delivery, confirm the SMTP provider result before retrying."
+    ],
+    "href": "/admin/email",
+    "audience": "admin",
+    "section": "Email",
+    "keywords": "email delivery reply processing timeline smtp retry failed unknown",
+    "notes": [
+      "Retrying an uncertain outbound message can create a duplicate if the provider already delivered it."
+    ]
+  },
+  {
+    "id": "email-configuration",
+    "title": "Configure email connections and routing",
+    "summary": "Configure outbound SMTP, incoming Microsoft 365/Graph intake, the ticket mailbox, and client recipient routing.",
+    "steps": [
+      "Open Email administration.",
+      "Configure the SMTP server, port, encryption mode, username, and password as approved for your environment.",
+      "Set the ticket mailbox used for service-desk email.",
+      "Choose Disabled or Microsoft 365 / Graph for the incoming mailbox connection.",
+      "Enable outgoing email only after the SMTP settings are verified.",
+      "Use Verify SMTP connection to test the connection.",
+      "Use Send ticket test to me when outbound email is enabled and confirm delivery.",
+      "Configure recipient-to-client routes and test each route before broad intake is enabled."
+    ],
+    "href": "/admin/email",
+    "audience": "admin",
+    "section": "Email",
+    "keywords": "email administration smtp2go smtp microsoft 365 graph mailbox routing",
+    "notes": [
+      "CAB email is disabled in the current application flow; change communication is recorded in the change workspace instead."
+    ]
+  },
+  {
+    "id": "management-overview",
+    "title": "Management overview and workload",
+    "summary": "Use the Management workspace to monitor ticket workload, SLA status, and approvals across the scope available to management.",
+    "steps": [
+      "Open Management workspace.",
+      "Review the dashboard workload and recent activity.",
+      "Use Tickets to inspect the broader ticket queue.",
+      "Review SLA information and approvals when prioritizing or escalating work.",
+      "Open a ticket when a management decision or intervention is required."
+    ],
+    "href": "/management",
+    "audience": "lead",
+    "section": "Management",
+    "keywords": "management dashboard workload tickets sla approvals",
+    "notes": [
+      "Management access is available to Team Leads, Managers, and Administrators."
+    ]
+  },
+  {
+    "id": "management-tickets",
+    "title": "Monitor and manage the management ticket queue",
+    "summary": "Use Management Tickets for wider queue oversight, filtering, and ticket-level intervention.",
+    "steps": [
+      "Open Management → Tickets.",
+      "Search and filter the ticket list using the available criteria.",
+      "Review assignment, priority, SLA, and current status.",
+      "Open a ticket when reassignment, approval, escalation, or another management action is required.",
+      "Record decisions in the ticket using the appropriate public, internal, assignment, or approval control."
+    ],
+    "href": "/management/tickets",
+    "audience": "lead",
+    "section": "Management",
+    "keywords": "management tickets oversight queue escalation assignment approval",
+    "notes": [
+      "Management views can expose a wider scope than an individual technician queue."
+    ]
+  },
+  {
+    "id": "sla-management",
+    "title": "Review and maintain SLA policies",
+    "summary": "Use SLA Management to maintain response and resolution policies, calendars, and warning behavior.",
+    "steps": [
+      "Open SLA Management.",
+      "Review the active SLA policies and the priority each policy applies to.",
+      "Set response and resolution targets in minutes.",
+      "Set the warning percentage used to flag approaching targets.",
+      "Review the working calendar associated with each policy.",
+      "Use the calendar editor to maintain timezone, working days, start/end times, and holiday entries.",
+      "Save the policy or calendar and verify a sample ticket receives the expected SLA target."
+    ],
+    "href": "/management/sla",
+    "audience": "lead",
+    "section": "Management",
+    "keywords": "sla management response resolution warning calendar working days holidays",
+    "notes": [
+      "The same SLA configuration is used by ticket-level SLA calculations."
+    ]
+  },
+  {
+    "id": "reports-analytics",
+    "title": "Use reports and analytics",
+    "summary": "Review ticket, SLA, technician, and service metrics using the reporting views available to your role.",
+    "steps": [
+      "Open Reports & Analytics or Service performance.",
+      "Select the required client, technician, date range, or other report filters available on the screen.",
+      "Review the resulting metrics and ticket lists.",
+      "Use the Service performance view when you need a focused performance summary.",
+      "Use the technician export controls when you need CSV or Excel output from the technician reporting view."
+    ],
+    "href": "/management/reports",
+    "audience": "lead",
+    "section": "Management",
+    "keywords": "reports analytics technician report export csv excel service performance metrics",
+    "notes": [
+      "Report access is permission-controlled; an administrator can also expose service performance through the shared navigation."
+    ]
+  },
+  {
+    "id": "change-register",
+    "title": "Use the change register and calendar",
+    "summary": "Review planned changes, risk, status, owner, and planned windows before scheduling or approving work.",
+    "steps": [
+      "Open Change Management.",
+      "Review the Change register table for change number, type, risk, status, owner, and planned window.",
+      "Open a change to review its full record.",
+      "Use the Change calendar to inspect planned windows and potential scheduling conflicts.",
+      "Create a new change when controlled work must be recorded."
+    ],
+    "href": "/changes",
+    "audience": "lead",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "change register calendar risk status owner planned window",
+    "notes": [
+      "Change access is separately controlled and can be Contributor, Coordinator, Approver, or Change Manager."
+    ]
+  },
+  {
+    "id": "create-change",
+    "title": "Create a controlled service change",
+    "summary": "Create a change with its scope, risk, impact, implementation, test, rollback, communication, and stakeholder information.",
+    "steps": [
+      "Open Change Management and select New change.",
+      "Start from a saved change template when a standard plan already exists, or choose Blank change.",
+      "Select the organization, site, lead department, and owner.",
+      "Enter the change title, description, category, change type, and risk.",
+      "Record expected downtime and whether an outage is expected.",
+      "Set whether the client should be notified where approved.",
+      "Set the planned start and end.",
+      "Complete impact assessment, reason, business justification, implementation plan, test/validation plan, rollback plan, and communication plan.",
+      "Add client-side contacts or external stakeholders as required.",
+      "Attach change evidence when you have supporting files, then submit the change."
+    ],
+    "href": "/changes/new",
+    "audience": "staff",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "new change change template risk impact implementation test rollback stakeholders downtime",
+    "notes": [
+      "The change form supports up to 10 attachments, with a maximum of 5 MB per file in the current UI."
+    ]
+  },
+  {
+    "id": "change-detail",
+    "title": "Review a change and its control plan",
+    "summary": "Use the change detail page to review assessment, scheduling, linked incidents, approvals, teams, stakeholders, evidence, updates, communications, and immutable history.",
+    "steps": [
+      "Open the change from the register or a linked record.",
+      "Review the planned window, risk, assessment, and control information.",
+      "Check the CAB, scheduling and review panel for readiness and schedule conflicts.",
+      "Review linked incident tickets and confirm they belong to the same organization where required.",
+      "Review approval requests, implementation teams, stakeholders, attachments, updates, communications, and history.",
+      "Use the available actions only when your change-access role permits them."
+    ],
+    "href": "/changes",
+    "audience": "staff",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "change detail control plan linked incidents approvals teams stakeholders evidence updates history",
+    "notes": [
+      "Changing controlled fields can create a new revision and clear approval readiness; previous decisions remain in history."
+    ]
+  },
+  {
+    "id": "change-approval",
+    "title": "Manage change approvals",
+    "summary": "Record individual or CAB approval decisions and track readiness for the current change revision.",
+    "steps": [
+      "Open the change and review the current revision and approval readiness.",
+      "Review existing approval requests and the required decision path.",
+      "When authorized, add an individual or department approver.",
+      "Record APPROVED, REJECTED, or CHANGES_REQUESTED with a decision note.",
+      "Review the number of independent and CAB approvals and the readiness messages.",
+      "Do not assume approval is complete until the current revision meets the configured requirements."
+    ],
+    "href": "/changes",
+    "audience": "lead",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "change approval cab independent approvals decisions readiness revision",
+    "notes": [
+      "Approver, Coordinator, Change Manager, and Administrator access is controlled separately from general staff access."
+    ]
+  },
+  {
+    "id": "change-implementation",
+    "title": "Manage change teams, tasks and updates",
+    "summary": "Assign implementation teams, add tasks, record progress, and document validation or communication updates.",
+    "steps": [
+      "Open the Implementation teams and tasks section of the change.",
+      "Add the responsible department/team and the appropriate role such as Implementer, Lead, or Reviewer.",
+      "Add implementation tasks with a title, instructions, department, and assignee.",
+      "Update task state as TODO, IN_PROGRESS, BLOCKED, COMPLETED, or WAIVED.",
+      "Record a progress update when task status changes or evidence is available.",
+      "Use Team updates to record internal, implementation, validation, or client-communication notes."
+    ],
+    "href": "/changes",
+    "audience": "staff",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "change implementation team task todo progress blocked completed validation updates",
+    "notes": [
+      "Keep implementation evidence and validation notes inside the change record so reviewers can reconstruct what occurred."
+    ]
+  },
+  {
+    "id": "change-stakeholders-history",
+    "title": "Manage change stakeholders, evidence and history",
+    "summary": "Maintain external stakeholders, change evidence, update history, communications, and immutable change history.",
+    "steps": [
+      "Open the Stakeholders section and review existing contacts.",
+      "Add a client contact or an external stakeholder with name, email, and stakeholder role when required.",
+      "Use Attachments and evidence to upload supporting files.",
+      "Use Team updates to document implementation or validation evidence.",
+      "Review Communication history for recorded communication events.",
+      "Use Immutable change history to trace significant events and decisions."
+    ],
+    "href": "/changes",
+    "audience": "staff",
+    "permission": "changeAccess",
+    "section": "Change Management",
+    "keywords": "change stakeholders attachments evidence communication history audit immutable",
+    "notes": [
+      "The current change workflow records communications and decisions; CAB email delivery is disabled."
+    ]
+  },
+  {
+    "id": "change-governance-admin",
+    "title": "Configure CAB and change policy",
+    "summary": "Administrators can maintain CAB groups, quorum, templates, blackout windows, and post-implementation review requirements.",
+    "steps": [
+      "Open CAB & change policy from Administration or the staff navigation.",
+      "Review the policy flags for CAB requirements, independent approvals, and post-implementation review.",
+      "Create or edit CAB groups and set the quorum and reviewers.",
+      "Create or update change templates for recurring plans.",
+      "Create blackout windows for organizations, sites, or periods where changes should be restricted.",
+      "Review post-implementation requirements and record follow-up when a change closes."
+    ],
+    "href": "/admin/change-governance",
+    "audience": "admin",
+    "section": "Change Management",
+    "keywords": "cab change policy quorum reviewers templates blackout post implementation review governance",
+    "notes": [
+      "Changing governance affects future and in-progress change workflows; make changes deliberately and verify a sample change afterward."
+    ]
+  },
+  {
+    "id": "admin-overview",
+    "title": "Use the Administration overview",
+    "summary": "Review service-desk administration counts, recent activity, and links to configuration areas.",
+    "steps": [
+      "Open Administration.",
+      "Review the overview counts for users, tickets, clients, sites, and assets.",
+      "Use the navigation to open the configuration section you need.",
+      "Review Audit History when you need to verify administrative changes.",
+      "Use the dashboard links to move directly to the corresponding configuration records."
+    ],
+    "href": "/admin",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "admin overview counts configuration users clients sites assets dashboard",
+    "notes": [
+      "Administrative sections can be permission-restricted even for non-Administrator staff with delegated management permissions."
+    ]
+  },
+  {
+    "id": "admin-users",
+    "title": "Manage users and access",
+    "summary": "Provision and maintain Service Desk access using verified Microsoft Entra identities, roles, scope, departments, and change access.",
+    "steps": [
+      "Open Users & Access.",
+      "When adding a user, search Azure using the name, work email, or Entra UPN.",
+      "Select the exact verified Entra account.",
+      "Choose one access profile: Client user, Intern, Technician, Team Lead, Manager, or Administrator.",
+      "For staff roles, set work scope, Change Management access, supervisor where applicable, departments, expertise, client scope, and optional site scope.",
+      "For client users, make sure the correct client membership is selected.",
+      "Save the access profile and confirm the user appears with the intended active state."
+    ],
+    "href": "/admin/users",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "users access entra azure role technician team lead manager admin intern work scope client scope site departments",
+    "notes": [
+      "Changing an existing user profile signs the user out of existing sessions. At least one active administrator must remain."
+    ]
+  },
+  {
+    "id": "admin-client-portal-access",
+    "title": "Grant or remove client portal access",
+    "summary": "Link an approved client contact to a user account so that the person can access the client portal.",
+    "steps": [
+      "Open Contacts and select the client contact.",
+      "Use the portal-access control on the contact record.",
+      "Choose the approved portal account or select No portal access.",
+      "Save the portal link.",
+      "Ask the user to sign in again and verify that the Client portal workspace is available."
+    ],
+    "href": "/admin/contacts",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "contact portal account client user link access",
+    "notes": [
+      "The client user role and contact-to-account linkage work together to provide client portal access."
+    ]
+  },
+  {
+    "id": "admin-clients",
+    "title": "Manage clients",
+    "summary": "Create and maintain organizations, ticket number prefixes, contact information, and client notes.",
+    "steps": [
+      "Open Clients.",
+      "Add or edit the client name, ticket prefix, primary email, primary phone, and notes.",
+      "Use an uppercase ticket prefix that matches the allowed format.",
+      "Save the client and review its active/inactive state.",
+      "Use the client record when managing related contacts, sites, assets, and user memberships."
+    ],
+    "href": "/admin/clients",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "clients organizations ticket prefix primary email phone notes",
+    "notes": [
+      "Changing a client ticket prefix affects only future tickets."
+    ]
+  },
+  {
+    "id": "admin-contacts",
+    "title": "Manage contacts",
+    "summary": "Maintain client contacts and associate them with the correct organization and optional site.",
+    "steps": [
+      "Open Contacts.",
+      "Create or edit the contact name, email, and phone.",
+      "Select the client organization.",
+      "Select a site when the contact is site-specific; leave it blank for an organization-wide contact.",
+      "Save the contact and use the portal-access control when this contact should be linked to a client user."
+    ],
+    "href": "/admin/contacts",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "contacts client requester site email phone portal",
+    "notes": [
+      "Contacts referenced by retained ticket history may be deactivated instead of permanently deleted."
+    ]
+  },
+  {
+    "id": "admin-sites-assets",
+    "title": "Manage sites and assets",
+    "summary": "Maintain client sites and tracked assets used for ticket routing and operational context.",
+    "steps": [
+      "Open Sites and select the client organization.",
+      "Create or update the site name and address.",
+      "Open the relevant client context when adding an asset.",
+      "Enter asset name, asset type, serial number, external reference, and site when applicable.",
+      "Save the records and verify their client/site association."
+    ],
+    "href": "/admin/sites",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "sites address assets serial number asset type external reference client",
+    "notes": [
+      "Assets are client-scoped and can also be associated with a site."
+    ]
+  },
+  {
+    "id": "admin-categories",
+    "title": "Manage ticket categories",
+    "summary": "Maintain ticket categories, descriptions, and optional parent/child relationships used for classification and SLA policy application.",
+    "steps": [
+      "Open Categories.",
+      "Add a category name and description.",
+      "Select a parent category when creating a child category.",
+      "Save the category and verify the hierarchy.",
+      "Review a sample ticket to confirm the category is available and applies as expected."
+    ],
+    "href": "/admin/categories",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "categories parent child hierarchy ticket classification",
+    "notes": [
+      "Category changes affect how new and updated tickets are classified and reported."
+    ]
+  },
+  {
+    "id": "admin-tags",
+    "title": "Manage ticket tags",
+    "summary": "Create and maintain reusable tags for ticket classification, searching, and operational filtering.",
+    "steps": [
+      "Open Tags.",
+      "Create a tag name and optional description.",
+      "Edit the tag when its meaning or description changes.",
+      "Use the tag on tickets where it improves filtering or reporting.",
+      "Review ticket search filters to confirm the tag is available."
+    ],
+    "href": "/admin/tags",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "tags classification filter ticket search reporting",
+    "notes": [
+      "Keep tag names consistent so technicians can find and reuse the same classifications."
+    ]
+  },
+  {
+    "id": "admin-tickets",
+    "title": "Review tickets from Administration",
+    "summary": "Use the administrative ticket view to inspect tickets when broader administrative scope is required.",
+    "steps": [
+      "Open Administration → Tickets.",
+      "Search and filter the ticket data using the administrative view.",
+      "Open a ticket to review the same ticket history, SLA, assignments, approvals, attachments, and controls available to your administrative role.",
+      "Use the administrative view for investigation or oversight rather than bypassing normal ticket workflow."
+    ],
+    "href": "/admin/tickets",
+    "audience": "admin",
+    "section": "Administration",
+    "keywords": "admin tickets administration ticket detail oversight",
+    "notes": [
+      "Administrative visibility does not remove the need to use the correct ticket action or audit trail."
+    ]
+  },
+  {
+    "id": "admin-reports",
+    "title": "Use Reports & Analytics administration view",
+    "summary": "Review operational reporting from the Administration workspace and use the available filters and exports.",
+    "steps": [
+      "Open Reports & Analytics.",
+      "Set the date range and any available client, technician, priority, or calendar filters.",
+      "Review policy and workload information shown on the page.",
+      "Use the technician export links when you need CSV or Excel output.",
+      "Open a related ticket from the report when further investigation is needed."
+    ],
+    "href": "/admin/reports",
+    "audience": "admin",
+    "section": "Reports & Audit",
+    "keywords": "admin reports analytics technician export csv excel metrics filters",
+    "notes": [
+      "Exported reports should be handled according to your organization’s data-handling rules."
+    ]
+  },
+  {
+    "id": "service-performance",
+    "title": "Review service performance",
+    "summary": "Use the Service performance view for a focused operational report across the ticket and SLA data you are allowed to see.",
+    "steps": [
+      "Open Service performance from the shared navigation when it is available to your role.",
+      "Set the reporting period and available scope filters.",
+      "Review the resulting performance information.",
+      "Use the results to identify tickets that need follow-up, escalation, or deeper review."
+    ],
+    "href": "/service-reports",
+    "audience": "staff",
+    "permission": "REPORTS_VIEW",
+    "section": "Reports & Audit",
+    "keywords": "service performance report reporting period scope ticket sla",
+    "notes": [
+      "The Service performance link is shown to administrators and users with the reports permission."
+    ]
+  },
+  {
+    "id": "audit-history",
+    "title": "Review audit history",
+    "summary": "Trace important administrative and ticket-related changes using the recorded audit history.",
+    "steps": [
+      "Open Audit History.",
+      "Search or filter the available audit records.",
+      "Review the actor, action, entity, timestamp, and recorded details.",
+      "Open the related record when further context is needed.",
+      "Use the audit trail to support investigations and change reviews."
+    ],
+    "href": "/admin/audit-logs",
+    "audience": "admin",
+    "section": "Reports & Audit",
+    "keywords": "audit history logs actor action entity timestamp investigation",
+    "notes": [
+      "Audit records are historical evidence; do not edit or delete them as part of normal troubleshooting."
+    ]
+  },
+  {
+    "id": "user-guide",
+    "title": "Use the complete User Guide",
+    "summary": "Search this guide by section, feature, or task and open the relevant workspace page from each topic.",
+    "steps": [
+      "Open User guide from the shared navigation.",
+      "Use the search box with a feature name such as ticket, SLA, attachment, email, change, or user.",
+      "Read the Steps and Important notes for the matching topic.",
+      "Select Open this section → to go directly to the related workspace page.",
+      "Return to the guide when you need instructions for another role or function."
+    ],
+    "href": "/help",
+    "audience": "everyone",
+    "section": "Getting Started",
+    "keywords": "user guide help documentation search topic instructions",
+    "notes": [
+      "The guide is role-filtered, so users may see different topics based on their authorized access."
+    ]
+  }
+]
