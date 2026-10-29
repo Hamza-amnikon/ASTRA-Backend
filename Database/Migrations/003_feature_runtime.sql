@@ -1,5 +1,8 @@
 -- Supporting runtime state for the .NET customer support verification flow.
--- No source records are modified or removed.
+-- Existing source records are not modified or removed.
+-- Fresh databases need the singleton before administrators can open the mail form.
+-- Use schema defaults (outgoing and incoming mail disabled) and retain saved settings.
+INSERT INTO mail_settings (id) VALUES (1) ON DUPLICATE KEY UPDATE id = id;
 CREATE TABLE IF NOT EXISTS astra_mail_attachment_batches (
   message_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
   warnings JSON NOT NULL,
