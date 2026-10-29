@@ -1,0 +1,3324 @@
+{
+  "tables": [
+    {
+      "name": "access_groups",
+      "columns": 10,
+      "sourceRows": "0"
+    },
+    {
+      "name": "app_schema_state",
+      "columns": 3,
+      "sourceRows": "1"
+    },
+    {
+      "name": "assets",
+      "columns": 10,
+      "sourceRows": "0"
+    },
+    {
+      "name": "audit_logs",
+      "columns": 9,
+      "sourceRows": "323"
+    },
+    {
+      "name": "cab_groups",
+      "columns": 5,
+      "sourceRows": "0"
+    },
+    {
+      "name": "cab_members",
+      "columns": 2,
+      "sourceRows": "0"
+    },
+    {
+      "name": "categories",
+      "columns": 7,
+      "sourceRows": "91"
+    },
+    {
+      "name": "change_approvals",
+      "columns": 13,
+      "sourceRows": "5"
+    },
+    {
+      "name": "change_attachments",
+      "columns": 9,
+      "sourceRows": "0"
+    },
+    {
+      "name": "change_blackouts",
+      "columns": 8,
+      "sourceRows": "0"
+    },
+    {
+      "name": "change_communications",
+      "columns": 12,
+      "sourceRows": "0"
+    },
+    {
+      "name": "change_governance_policy",
+      "columns": 4,
+      "sourceRows": "1"
+    },
+    {
+      "name": "change_history",
+      "columns": 6,
+      "sourceRows": "14"
+    },
+    {
+      "name": "change_reviews",
+      "columns": 8,
+      "sourceRows": "2"
+    },
+    {
+      "name": "change_stakeholders",
+      "columns": 9,
+      "sourceRows": "0"
+    },
+    {
+      "name": "change_tasks",
+      "columns": 11,
+      "sourceRows": "21"
+    },
+    {
+      "name": "change_teams",
+      "columns": 4,
+      "sourceRows": "7"
+    },
+    {
+      "name": "change_templates",
+      "columns": 10,
+      "sourceRows": "0"
+    },
+    {
+      "name": "change_ticket_links",
+      "columns": 3,
+      "sourceRows": "20"
+    },
+    {
+      "name": "change_updates",
+      "columns": 6,
+      "sourceRows": "7"
+    },
+    {
+      "name": "changes",
+      "columns": 33,
+      "sourceRows": "7"
+    },
+    {
+      "name": "client_email_domains",
+      "columns": 8,
+      "sourceRows": "0"
+    },
+    {
+      "name": "client_ticket_sequences",
+      "columns": 2,
+      "sourceRows": "3"
+    },
+    {
+      "name": "client_users",
+      "columns": 3,
+      "sourceRows": "8"
+    },
+    {
+      "name": "clients",
+      "columns": 10,
+      "sourceRows": "3"
+    },
+    {
+      "name": "contacts",
+      "columns": 10,
+      "sourceRows": "5"
+    },
+    {
+      "name": "customer_group_members",
+      "columns": 3,
+      "sourceRows": "0"
+    },
+    {
+      "name": "department_users",
+      "columns": 4,
+      "sourceRows": "0"
+    },
+    {
+      "name": "departments",
+      "columns": 6,
+      "sourceRows": "6"
+    },
+    {
+      "name": "help_requests",
+      "columns": 11,
+      "sourceRows": "4"
+    },
+    {
+      "name": "knowledge_articles",
+      "columns": 11,
+      "sourceRows": "0"
+    },
+    {
+      "name": "mail_attachments",
+      "columns": 7,
+      "sourceRows": "0"
+    },
+    {
+      "name": "mail_messages",
+      "columns": 24,
+      "sourceRows": "14"
+    },
+    {
+      "name": "mail_settings",
+      "columns": 12,
+      "sourceRows": "1"
+    },
+    {
+      "name": "mail_sync_state",
+      "columns": 4,
+      "sourceRows": "1"
+    },
+    {
+      "name": "notification_preferences",
+      "columns": 8,
+      "sourceRows": "0"
+    },
+    {
+      "name": "notifications",
+      "columns": 10,
+      "sourceRows": "50"
+    },
+    {
+      "name": "permissions",
+      "columns": 3,
+      "sourceRows": "12"
+    },
+    {
+      "name": "portal_ticket_submissions",
+      "columns": 6,
+      "sourceRows": "0"
+    },
+    {
+      "name": "problem_history",
+      "columns": 6,
+      "sourceRows": "6"
+    },
+    {
+      "name": "problem_tickets",
+      "columns": 5,
+      "sourceRows": "15"
+    },
+    {
+      "name": "problems",
+      "columns": 17,
+      "sourceRows": "3"
+    },
+    {
+      "name": "role_access_policies",
+      "columns": 5,
+      "sourceRows": "0"
+    },
+    {
+      "name": "roles",
+      "columns": 4,
+      "sourceRows": "6"
+    },
+    {
+      "name": "saved_ticket_views",
+      "columns": 6,
+      "sourceRows": "0"
+    },
+    {
+      "name": "service_templates",
+      "columns": 9,
+      "sourceRows": "0"
+    },
+    {
+      "name": "site_ticket_sequences",
+      "columns": 2,
+      "sourceRows": "1"
+    },
+    {
+      "name": "sites",
+      "columns": 8,
+      "sourceRows": "60"
+    },
+    {
+      "name": "sla_calendars",
+      "columns": 10,
+      "sourceRows": "1"
+    },
+    {
+      "name": "sla_holidays",
+      "columns": 4,
+      "sourceRows": "0"
+    },
+    {
+      "name": "sla_policies",
+      "columns": 10,
+      "sourceRows": "4"
+    },
+    {
+      "name": "staff_group_members",
+      "columns": 2,
+      "sourceRows": "0"
+    },
+    {
+      "name": "tags",
+      "columns": 6,
+      "sourceRows": "34"
+    },
+    {
+      "name": "ticket_approvals",
+      "columns": 9,
+      "sourceRows": "7"
+    },
+    {
+      "name": "ticket_assignments",
+      "columns": 7,
+      "sourceRows": "39"
+    },
+    {
+      "name": "ticket_attachments",
+      "columns": 11,
+      "sourceRows": "2"
+    },
+    {
+      "name": "ticket_collaborators",
+      "columns": 5,
+      "sourceRows": "4"
+    },
+    {
+      "name": "ticket_comments",
+      "columns": 6,
+      "sourceRows": "61"
+    },
+    {
+      "name": "ticket_history",
+      "columns": 8,
+      "sourceRows": "106"
+    },
+    {
+      "name": "ticket_knowledge_links",
+      "columns": 4,
+      "sourceRows": "0"
+    },
+    {
+      "name": "ticket_prefix_registry",
+      "columns": 3,
+      "sourceRows": "63"
+    },
+    {
+      "name": "ticket_sla",
+      "columns": 18,
+      "sourceRows": "38"
+    },
+    {
+      "name": "ticket_sources",
+      "columns": 6,
+      "sourceRows": "7"
+    },
+    {
+      "name": "ticket_tags",
+      "columns": 4,
+      "sourceRows": "92"
+    },
+    {
+      "name": "tickets",
+      "columns": 27,
+      "sourceRows": "38"
+    },
+    {
+      "name": "user_access_policies",
+      "columns": 6,
+      "sourceRows": "0"
+    },
+    {
+      "name": "user_permissions",
+      "columns": 4,
+      "sourceRows": "12"
+    },
+    {
+      "name": "user_roles",
+      "columns": 4,
+      "sourceRows": "23"
+    },
+    {
+      "name": "user_sites",
+      "columns": 3,
+      "sourceRows": "0"
+    },
+    {
+      "name": "users",
+      "columns": 14,
+      "sourceRows": "23"
+    }
+  ],
+  "constraints": [
+    {
+      "table": "access_groups",
+      "name": "access_groups_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_description_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_id_client_id_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_kind_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_name_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_permissions_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "app_schema_state",
+      "name": "app_schema_state_id_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "app_schema_state",
+      "name": "app_schema_state_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "app_schema_state",
+      "name": "app_schema_state_version_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "assets",
+      "name": "assets_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "assets",
+      "name": "assets_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "assets",
+      "name": "assets_site_client_fk",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "assets",
+      "name": "assets_site_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "audit_logs",
+      "name": "audit_logs_actor_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "audit_logs",
+      "name": "audit_logs_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "cab_groups",
+      "name": "cab_groups_name_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "cab_groups",
+      "name": "cab_groups_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "cab_groups",
+      "name": "cab_groups_quorum_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "cab_members",
+      "name": "cab_members_group_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "cab_members",
+      "name": "cab_members_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "cab_members",
+      "name": "cab_members_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "categories",
+      "name": "categories_parent_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "categories",
+      "name": "categories_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_approver_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_cab_group_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_decision_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_attachments",
+      "name": "change_attachments_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_attachments",
+      "name": "change_attachments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_attachments",
+      "name": "change_attachments_size_bytes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_attachments",
+      "name": "change_attachments_uploaded_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_check1",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_created_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_site_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_site_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_communications",
+      "name": "change_communications_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_communications",
+      "name": "change_communications_created_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_communications",
+      "name": "change_communications_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_communications",
+      "name": "change_communications_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_governance_policy",
+      "name": "change_governance_policy_id_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_governance_policy",
+      "name": "change_governance_policy_minimum_approvals_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_governance_policy",
+      "name": "change_governance_policy_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_history",
+      "name": "change_history_actor_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_history",
+      "name": "change_history_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_history",
+      "name": "change_history_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_reviews",
+      "name": "change_reviews_actor_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_reviews",
+      "name": "change_reviews_change_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_reviews",
+      "name": "change_reviews_outcome_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_reviews",
+      "name": "change_reviews_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_added_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_contact_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_identity_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_stakeholder_role_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_assigned_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_role_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_category_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_created_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_name_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_ticket_links",
+      "name": "change_ticket_links_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_ticket_links",
+      "name": "change_ticket_links_linked_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_ticket_links",
+      "name": "change_ticket_links_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_ticket_links",
+      "name": "change_ticket_links_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_updates",
+      "name": "change_updates_author_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_updates",
+      "name": "change_updates_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "change_updates",
+      "name": "change_updates_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "change_updates",
+      "name": "change_updates_update_type_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_cab_group_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_cab_quorum_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_category_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_change_number_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_change_type_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_downtime_minutes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_owner_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_requested_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_revision_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_risk_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "changes",
+      "name": "changes_site_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "changes",
+      "name": "changes_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_domain_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_domain_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_id_client_id_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_site_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "client_ticket_sequences",
+      "name": "client_ticket_sequences_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "client_ticket_sequences",
+      "name": "client_ticket_sequences_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "client_users",
+      "name": "client_users_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "client_users",
+      "name": "client_users_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "client_users",
+      "name": "client_users_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "clients",
+      "name": "clients_organization_type_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "clients",
+      "name": "clients_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "clients",
+      "name": "clients_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "clients",
+      "name": "clients_ticket_prefix_format",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "clients",
+      "name": "clients_ticket_prefix_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_id_client_uq",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_site_client_fk",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_site_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_user_id_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "customer_group_members",
+      "name": "customer_group_members_contact_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "customer_group_members",
+      "name": "customer_group_members_group_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "customer_group_members",
+      "name": "customer_group_members_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "department_users",
+      "name": "department_users_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "department_users",
+      "name": "department_users_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "department_users",
+      "name": "department_users_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "departments",
+      "name": "departments_name_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "departments",
+      "name": "departments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_requested_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_requested_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_responded_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_author_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_category_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_visibility_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_attachments",
+      "name": "mail_attachments_message_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_attachments",
+      "name": "mail_attachments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_attachments",
+      "name": "mail_attachments_size_bytes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_change_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_channel_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_comment_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_communication_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_created_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_direction_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_mailbox_message_id_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_state_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_ticket_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_settings",
+      "name": "mail_settings_id_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_settings",
+      "name": "mail_settings_inbound_provider_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_settings",
+      "name": "mail_settings_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "mail_settings",
+      "name": "mail_settings_tls_mode_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "mail_sync_state",
+      "name": "mail_sync_state_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "notification_preferences",
+      "name": "notification_preferences_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "notification_preferences",
+      "name": "notification_preferences_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_change_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_event_key_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_type_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "permissions",
+      "name": "permissions_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_domain_rule_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_requester_email_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_ticket_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_ticket_id_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_history",
+      "name": "problem_history_actor_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_history",
+      "name": "problem_history_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_history",
+      "name": "problem_history_problem_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_linked_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_problem_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_ticket_id_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_check1",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_check2",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_created_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_description_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_id_client_id_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_number_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_owner_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_priority_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_problem_number_key",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_site_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "problems",
+      "name": "problems_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "problems",
+      "name": "problems_title_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_permissions_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_revision_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_role_code_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_updated_by_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "roles",
+      "name": "roles_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "saved_ticket_views",
+      "name": "saved_ticket_views_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "saved_ticket_views",
+      "name": "saved_ticket_views_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "service_templates",
+      "name": "service_templates_category_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "service_templates",
+      "name": "service_templates_client_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "service_templates",
+      "name": "service_templates_created_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "service_templates",
+      "name": "service_templates_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "site_ticket_sequences",
+      "name": "site_ticket_sequences_next_number_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "site_ticket_sequences",
+      "name": "site_ticket_sequences_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "site_ticket_sequences",
+      "name": "site_ticket_sequences_site_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sites",
+      "name": "sites_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sites",
+      "name": "sites_client_id_name_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "sites",
+      "name": "sites_id_client_id_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "sites",
+      "name": "sites_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "sites",
+      "name": "sites_ticket_prefix_format",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_name_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_updated_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_working_days_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_holidays",
+      "name": "sla_holidays_calendar_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_holidays",
+      "name": "sla_holidays_calendar_id_holiday_date_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_holidays",
+      "name": "sla_holidays_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_calendar_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_priority_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_priority_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_resolution_minutes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_response_minutes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_updated_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_warning_percent_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "staff_group_members",
+      "name": "staff_group_members_group_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "staff_group_members",
+      "name": "staff_group_members_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "staff_group_members",
+      "name": "staff_group_members_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tags",
+      "name": "tags_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_decided_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_requested_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_actor_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_assigned_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_previous_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_size_bytes_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_storage_key_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_uploaded_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_visibility_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_collaborators",
+      "name": "ticket_collaborators_added_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_collaborators",
+      "name": "ticket_collaborators_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_collaborators",
+      "name": "ticket_collaborators_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_collaborators",
+      "name": "ticket_collaborators_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_author_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_comment_type_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_history",
+      "name": "ticket_history_actor_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_history",
+      "name": "ticket_history_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_history",
+      "name": "ticket_history_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_knowledge_links",
+      "name": "ticket_knowledge_links_article_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_knowledge_links",
+      "name": "ticket_knowledge_links_linked_by_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_knowledge_links",
+      "name": "ticket_knowledge_links_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_knowledge_links",
+      "name": "ticket_knowledge_links_ticket_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "name": "ticket_prefix_registry_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "name": "ticket_prefix_registry_owner_kind_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "name": "ticket_prefix_registry_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "name": "ticket_prefix_registry_prefix_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_calendar_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_policy_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_ticket_id_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_sources",
+      "name": "ticket_sources_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_tags",
+      "name": "ticket_tags_added_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_tags",
+      "name": "ticket_tags_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_tags",
+      "name": "ticket_tags_tag_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "ticket_tags",
+      "name": "ticket_tags_ticket_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_approval_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_assigned_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_category_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_client_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_created_by_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_department_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_id_client_id_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_priority_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_requester_client_fk",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_requester_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_site_client_fk",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_site_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_source_fk",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_status_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_ticket_number_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_allow_permissions_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_deny_permissions_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_revision_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_updated_by_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_user_id_fkey",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_permissions",
+      "name": "user_permissions_granted_by_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_permissions",
+      "name": "user_permissions_permission_code_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_permissions",
+      "name": "user_permissions_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "user_permissions",
+      "name": "user_permissions_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_roles",
+      "name": "user_roles_granted_by_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_roles",
+      "name": "user_roles_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "user_roles",
+      "name": "user_roles_role_code_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_roles",
+      "name": "user_roles_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_sites",
+      "name": "user_sites_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "user_sites",
+      "name": "user_sites_site_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "user_sites",
+      "name": "user_sites_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "users",
+      "name": "users_change_access_check",
+      "type": "c",
+      "strategy": "trigger"
+    },
+    {
+      "table": "users",
+      "name": "users_entra_tenant_id_entra_object_id_unique",
+      "type": "u",
+      "strategy": "native"
+    },
+    {
+      "table": "users",
+      "name": "users_pkey",
+      "type": "p",
+      "strategy": "native"
+    },
+    {
+      "table": "users",
+      "name": "users_supervisor_user_id_foreign",
+      "type": "f",
+      "strategy": "native"
+    },
+    {
+      "table": "users",
+      "name": "users_work_scope_check",
+      "type": "c",
+      "strategy": "trigger"
+    }
+  ],
+  "indexes": [
+    {
+      "table": "access_groups",
+      "name": "access_groups_id_client_id_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_name_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "access_groups",
+      "name": "access_groups_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "app_schema_state",
+      "name": "app_schema_state_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "assets",
+      "name": "assets_client_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "assets",
+      "name": "assets_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "assets",
+      "name": "assets_serial_ci_uq",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "audit_logs",
+      "name": "audit_actor_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "audit_logs",
+      "name": "audit_entity_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "audit_logs",
+      "name": "audit_logs_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "cab_groups",
+      "name": "cab_groups_name_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "cab_groups",
+      "name": "cab_groups_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "cab_members",
+      "name": "cab_members_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "categories",
+      "name": "categories_child_name_ci_uq",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "categories",
+      "name": "categories_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "categories",
+      "name": "categories_root_name_ci_uq",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_approvals_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_approvals",
+      "name": "change_cab_vote_unique",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "change_attachments",
+      "name": "change_attachments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_blackouts",
+      "name": "change_blackouts_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_communications",
+      "name": "change_communications_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_governance_policy",
+      "name": "change_governance_policy_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_history",
+      "name": "change_history_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_reviews",
+      "name": "change_reviews_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_contact_unique",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_email_unique",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_stakeholders",
+      "name": "change_stakeholders_user_unique",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "change_tasks",
+      "name": "change_tasks_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_teams",
+      "name": "change_teams_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_name_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_templates",
+      "name": "change_templates_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_ticket_links",
+      "name": "change_ticket_links_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "change_updates",
+      "name": "change_updates_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "changes",
+      "name": "change_resources_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "changes",
+      "name": "change_window_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "changes",
+      "name": "changes_change_number_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "changes",
+      "name": "changes_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "changes",
+      "name": "changes_scope_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_client_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_domain_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_id_client_id_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "client_email_domains",
+      "name": "client_email_domains_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "client_ticket_sequences",
+      "name": "client_ticket_sequences_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "client_users",
+      "name": "client_users_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "clients",
+      "name": "clients_name_ci_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "clients",
+      "name": "clients_name_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "clients",
+      "name": "clients_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "clients",
+      "name": "clients_ticket_prefix_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_client_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_email_ci_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_group_client_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_id_client_uq",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_name_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_portal_email_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_site_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "contacts",
+      "name": "contacts_user_id_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "customer_group_members",
+      "name": "customer_group_members_contact_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "customer_group_members",
+      "name": "customer_group_members_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "department_users",
+      "name": "department_users_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "departments",
+      "name": "departments_name_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "departments",
+      "name": "departments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "help_requests",
+      "name": "help_requests_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_articles_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "knowledge_articles",
+      "name": "knowledge_search_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "mail_attachments",
+      "name": "mail_attachments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_change_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_comment_once",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_communication_once",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_mailbox_message_id_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_messages_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_outbox_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "mail_messages",
+      "name": "mail_ticket_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "mail_settings",
+      "name": "mail_settings_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "mail_sync_state",
+      "name": "mail_sync_state_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "notification_preferences",
+      "name": "notification_preferences_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_event_key_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_user_unread_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "permissions",
+      "name": "permissions_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "portal_ticket_submissions",
+      "name": "portal_ticket_submissions_ticket_id_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problem_history",
+      "name": "problem_history_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problem_history",
+      "name": "problem_history_timeline",
+      "strategy": "btree"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problem_tickets",
+      "name": "problem_tickets_ticket",
+      "strategy": "btree"
+    },
+    {
+      "table": "problems",
+      "name": "problems_client_status_updated",
+      "strategy": "btree"
+    },
+    {
+      "table": "problems",
+      "name": "problems_id_client_id_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problems",
+      "name": "problems_number_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problems",
+      "name": "problems_owner_updated",
+      "strategy": "btree"
+    },
+    {
+      "table": "problems",
+      "name": "problems_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "problems",
+      "name": "problems_problem_number_key",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "role_access_policies",
+      "name": "role_access_policies_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "roles",
+      "name": "roles_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "saved_ticket_views",
+      "name": "saved_ticket_views_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "saved_ticket_views",
+      "name": "saved_ticket_views_user_name_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "service_templates",
+      "name": "service_templates_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "site_ticket_sequences",
+      "name": "site_ticket_sequences_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sites",
+      "name": "sites_client_id_name_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sites",
+      "name": "sites_id_client_id_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sites",
+      "name": "sites_id_client_portal_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "sites",
+      "name": "sites_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sites",
+      "name": "sites_ticket_prefix_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_name_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sla_calendars",
+      "name": "sla_calendars_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sla_holidays",
+      "name": "sla_holidays_calendar_id_holiday_date_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sla_holidays",
+      "name": "sla_holidays_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "sla_policies",
+      "name": "sla_policies_priority_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "staff_group_members",
+      "name": "staff_group_members_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "staff_group_members",
+      "name": "staff_group_members_user_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "tags",
+      "name": "tags_name_ci_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "tags",
+      "name": "tags_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_pending_uq",
+      "strategy": "conditional_expression"
+    },
+    {
+      "table": "ticket_approvals",
+      "name": "ticket_approvals_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_assignments",
+      "name": "ticket_assignments_ticket_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_storage_key_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_attachments",
+      "name": "ticket_attachments_ticket_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "ticket_collaborators",
+      "name": "ticket_collaborators_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_body_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_comments",
+      "name": "ticket_comments_ticket_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "ticket_history",
+      "name": "ticket_history_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_history",
+      "name": "ticket_history_ticket_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "ticket_knowledge_links",
+      "name": "ticket_knowledge_links_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "name": "ticket_prefix_registry_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_due_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_sla",
+      "name": "ticket_sla_ticket_id_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_sources",
+      "name": "ticket_sources_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "ticket_tags",
+      "name": "ticket_tags_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_assignee_status_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_client_created_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_description_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_id_client_id_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_number_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_search_vector_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_status_priority_idx",
+      "strategy": "btree"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_subject_trgm_idx",
+      "strategy": "replacement_search_pending"
+    },
+    {
+      "table": "tickets",
+      "name": "tickets_ticket_number_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "user_access_policies",
+      "name": "user_access_policies_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "user_permissions",
+      "name": "user_permissions_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "user_roles",
+      "name": "user_roles_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "user_sites",
+      "name": "user_sites_pkey",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "users",
+      "name": "users_email_ci_uq",
+      "strategy": "btree"
+    },
+    {
+      "table": "users",
+      "name": "users_entra_tenant_id_entra_object_id_unique",
+      "strategy": "primary_or_unique_key"
+    },
+    {
+      "table": "users",
+      "name": "users_pkey",
+      "strategy": "primary_or_unique_key"
+    }
+  ],
+  "textBounds": [
+    {
+      "table": "access_groups",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "access_groups",
+      "column": "kind",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "assets",
+      "column": "serial_number",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "audit_logs",
+      "column": "entity_type",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "audit_logs",
+      "column": "entity_id",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "cab_groups",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "categories",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "change_stakeholders",
+      "column": "external_email",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "change_templates",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "changes",
+      "column": "change_number",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "changes",
+      "column": "status",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "client_email_domains",
+      "column": "domain",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "clients",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "clients",
+      "column": "ticket_prefix",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "contacts",
+      "column": "email",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "departments",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "mail_messages",
+      "column": "direction",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "mail_messages",
+      "column": "mailbox",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "mail_messages",
+      "column": "message_id",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "mail_messages",
+      "column": "state",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "mail_sync_state",
+      "column": "mailbox",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "notifications",
+      "column": "event_key",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "permissions",
+      "column": "code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "problems",
+      "column": "problem_number",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "problems",
+      "column": "status",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "role_access_policies",
+      "column": "role_code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "roles",
+      "column": "code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "saved_ticket_views",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "sites",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "sites",
+      "column": "ticket_prefix",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "sla_calendars",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "sla_policies",
+      "column": "priority",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "tags",
+      "column": "name",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "ticket_approvals",
+      "column": "status",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "ticket_attachments",
+      "column": "storage_key",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "ticket_prefix_registry",
+      "column": "prefix",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "ticket_sources",
+      "column": "code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "tickets",
+      "column": "ticket_number",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "tickets",
+      "column": "source",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "tickets",
+      "column": "status",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "tickets",
+      "column": "priority",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "user_permissions",
+      "column": "permission_code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "user_roles",
+      "column": "role_code",
+      "maximumCharacters": 255
+    },
+    {
+      "table": "users",
+      "column": "email",
+      "maximumCharacters": 255
+    }
+  ],
+  "foreignKeyAdjustments": [
+    {
+      "table": "tickets",
+      "name": "tickets_category_id_foreign",
+      "reason": "PostgreSQL rejects deletion because SET NULL would violate NOT NULL. MySQL requires RESTRICT at definition time."
+    }
+  ],
+  "sequenceDefaults": [
+    {
+      "table": "changes",
+      "column": "change_number",
+      "strategy": "Application must allocate the preserved sequence transactionally."
+    }
+  ],
+  "blockers": [
+    "Schema must be executed and tested on MySQL before use.",
+    "Every narrowed indexed text field must pass source length preflight before import.",
+    "Full-text, substring and JSON-array search behavior must be verified in the .NET API.",
+    "Audit immutability, triggers/functions, grants, and sequence state require source runtime inspection.",
+    "Data transfer, checksums, attachments, and API parity remain pending."
+  ]
+}
