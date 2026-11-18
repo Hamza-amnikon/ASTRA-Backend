@@ -16,10 +16,38 @@ public static partial class FeatureApis
         var extra = c.RequestServices.GetRequiredService<IConfiguration>()["ASTRA_LOCAL_PREVIEW_ORIGINS"] ?? "";
         return extra.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Any(x => Uri.TryCreate(x, UriKind.Absolute, out var local) && local.IsLoopback && origin == local.GetLeftPart(UriPartial.Authority));
     }
+    private const string DomainPreviewTokenPrefix = "domain-preview-";
+
+    private static bool DomainPreviewEnabled(HttpContext context) =>
+        context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment() &&
+        context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("ASTRA_SUPPORT_DOMAIN_PREVIEW") &&
+        context.Connection.RemoteIpAddress is { } address && System.Net.IPAddress.IsLoopback(address) &&
+        context.Request.Host.Host is "localhost" or "127.0.0.1" or "[::1]";
+
     private static void MapSupport(WebApplication app)
     {
         var support = app.MapGroup("/api/support").AllowAnonymous().AddEndpointFilter<FeatureErrors>();
         support.AddEndpointFilter(async (invocation, next) => { var c = invocation.HttpContext; if (c.Request.Method == "POST" && !SupportOrigin(c)) return Error(403, "INVALID_ORIGIN", "Open the support page in the same browser before continuing."); return await next(invocation); });
+        support.AddEndpointFilter(async (invocation, next) =>
+        {
+            var context = invocation.HttpContext;
+            if (context.Request.Cookies["astra_support_session"]?.StartsWith(DomainPreviewTokenPrefix, StringComparison.Ordinal) == true &&
+                !DomainPreviewEnabled(context))
+                return Error(401, "SUPPORT_SESSION_EXPIRED", "Sign in again to continue.");
+            return await next(invocation);
+        });
+        support.MapGet("/status", (HttpContext context) => Results.Ok(new { domainPreview = DomainPreviewEnabled(context) }));
+        support.MapPost("/domain-preview", async (JsonElement body, HttpContext context, MySqlStore store, CancellationToken ct) =>
+        {
+            if (!DomainPreviewEnabled(context)) return Results.NotFound();
+            var token = await store.StartSupportDomainPreview(body, DomainPreviewTokenPrefix, ct);
+            context.Response.Cookies.Append("astra_support_session", token, new CookieOptions
+            {
+                HttpOnly = true, Secure = context.Request.IsHttps, SameSite = SameSiteMode.Lax,
+                Path = "/api/support", MaxAge = TimeSpan.FromHours(1)
+            });
+            return Results.Ok(new { signedIn = true });
+        });
         support.MapPost("/code", async (JsonElement body, HttpContext c, MySqlStore s, CancellationToken t) => Results.Ok(await s.SupportCode(body, c.Connection.RemoteIpAddress?.ToString() ?? "unknown", t)));
         support.MapPost("/verify", async (JsonElement body, HttpContext c, MySqlStore s, CancellationToken t) =>
         {
@@ -69,6 +97,26 @@ public sealed partial class MySqlStore
     {
         return (await FQuery("SELECT d.*,c.name AS client_name,COALESCE(s.ticket_prefix,c.ticket_prefix) AS ticket_prefix FROM client_email_domains d JOIN clients c ON c.id=d.client_id LEFT JOIN sites s ON s.id=d.site_id AND s.client_id=d.client_id WHERE d.domain=@domain AND d.active=1 AND c.status='ACTIVE' AND c.organization_type='CLIENT' AND (d.site_id IS NULL OR s.active=1)", ct, ("domain", domain))).FirstOrDefault();
     }
+    public async Task<string> StartSupportDomainPreview(JsonElement body, string tokenPrefix, CancellationToken ct)
+    {
+        var email = ValidEmail(JString(body, "email"), "work");
+        var domain = NormalizeDomain(email.Split('@')[1]);
+        await SupportRate("domain-preview:" + domain, 60, 3600, ct);
+        var rule = await SupportRule(domain, ct)
+            ?? throw new FeatureFailure(403, "DOMAIN_UNAVAILABLE", "This work email domain is not enabled for client support.");
+        var token = tokenPrefix + RandomToken();
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await FExecute(connection, transaction, "DELETE FROM astra_support_sessions WHERE expires_at<=UTC_TIMESTAMP(6) LIMIT 100", ct);
+        await FExecute(connection, transaction,
+            "INSERT INTO astra_support_sessions(id,email,domain_rule_id,client_id,revision,csrf_token,expires_at) VALUES(@id,@email,@rule,@client,@revision,@csrf,UTC_TIMESTAMP(6)+INTERVAL 1 HOUR)",
+            ct, ("id", SupportHash(token)), ("email", email.Split('@')[0] + "@" + domain),
+            ("rule", rule["id"]), ("client", rule["client_id"]), ("revision", rule["revision"]), ("csrf", RandomToken()));
+        await transaction.CommitAsync(ct);
+        return token;
+    }
+
     public async Task<object> SupportCode(JsonElement b, string ip, CancellationToken ct)
     {
         var email = ValidEmail(JString(b, "email"), "work");
@@ -155,7 +203,7 @@ public sealed partial class MySqlStore
     }
     private async Task<Dictionary<string, object?>> SupportIdentity(string? token, string? csrf, CancellationToken ct)
     {
-        if (token is null || !System.Text.RegularExpressions.Regex.IsMatch(token, "^[a-f0-9]{64}$"))
+        if (token is null || !System.Text.RegularExpressions.Regex.IsMatch(token, @"\A(?:domain-preview-)?[a-f0-9]{64}\z"))
             throw new FeatureFailure(401, "SUPPORT_SESSION_EXPIRED", "Verify your work email to continue.");
         var row = (await FQuery("SELECT x.*,d.site_id,c.name AS client_name,COALESCE(s.ticket_prefix,c.ticket_prefix) AS ticket_prefix FROM astra_support_sessions x JOIN client_email_domains d ON d.id=x.domain_rule_id AND d.client_id=x.client_id AND d.revision=x.revision AND d.active=1 JOIN clients c ON c.id=x.client_id AND c.status='ACTIVE' AND c.organization_type='CLIENT' LEFT JOIN sites s ON s.id=d.site_id AND s.client_id=d.client_id WHERE x.id=@id AND x.expires_at>UTC_TIMESTAMP(6) AND (d.site_id IS NULL OR s.active=1)", ct, ("id", SupportHash(token)))).FirstOrDefault() ?? throw new FeatureFailure(401, "SUPPORT_SESSION_EXPIRED", "Your support access expired or changed. Verify your email again.");
         if (csrf is not null)
@@ -237,7 +285,7 @@ public sealed partial class MySqlStore
         await SetInitialTicketSla(c, tx, ticket, "P3_MEDIUM", ct);
         await FExecute(c, tx, "INSERT INTO portal_ticket_submissions(request_id,domain_rule_id,client_id,requester_email,ticket_id) VALUES(@request,@rule,@client,@email,@ticket)", ct, ("request", request), ("rule", identity["domain_rule_id"]), ("client", identity["client_id"]), ("email", identity["email"]), ("ticket", ticket));
         await FExecute(c, tx, "INSERT INTO ticket_history(ticket_id,action,new_value) VALUES(@id,'TICKET.CREATED',JSON_OBJECT('source','CLIENT_PORTAL','verifiedEmail',@email))", ct, ("id", ticket), ("email", identity["email"]));
-        await FExecute(c, tx, "INSERT INTO audit_logs(action,entity_type,entity_id,details) VALUES('PORTAL.TICKET_SUBMITTED','TICKET',@id,JSON_OBJECT('verifiedEmail',@email,'clientId',@client,'domainRuleId',@rule,'identityMethod','EMAIL_CODE'))", ct, ("id", ticket), ("email", identity["email"]), ("client", identity["client_id"]), ("rule", identity["domain_rule_id"]));
+        await FExecute(c, tx, "INSERT INTO audit_logs(action,entity_type,entity_id,details) VALUES('PORTAL.TICKET_SUBMITTED','TICKET',@id,JSON_OBJECT('verifiedEmail',@email,'clientId',@client,'domainRuleId',@rule,'identityMethod',@identityMethod))", ct, ("id", ticket), ("email", identity["email"]), ("client", identity["client_id"]), ("rule", identity["domain_rule_id"]), ("identityMethod", token?.StartsWith("domain-preview-", StringComparison.Ordinal) == true ? "DOMAIN_PREVIEW" : "EMAIL_CODE"));
         await QueueTicketEvent(c, tx, null, ticket, null, "Verified support ticket created", ct);
         await tx.CommitAsync(ct);
         return new

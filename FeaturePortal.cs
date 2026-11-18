@@ -20,11 +20,11 @@ public sealed partial class MySqlStore
 {
     private async Task RequirePortal(string actor, CancellationToken ct)
     {
-        if ((await FQuery("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.id=@actor AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6)) AND r.role_code='USER'", ct, ("actor", actor))).Count == 0)
+        if ((await FQuery("SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.id=@actor AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6)) AND (r.role_code='USER' OR (u.work_scope IN ('INTERNAL','BOTH','ALL') AND r.role_code IN ('TECHNICIAN','TEAM_LEAD','MANAGER','INTERN','ADMIN')))", ct, ("actor", actor))).Count == 0)
             throw new UnauthorizedAccessException();
     }
     private static string PortalGroup(string permission) => $"EXISTS(SELECT 1 FROM customer_group_members gm JOIN access_groups g ON g.id=gm.group_id JOIN contacts member ON member.id=gm.contact_id JOIN users member_user ON member_user.id=member.user_id WHERE member.user_id=@actor AND member.active=1 AND member_user.active=1 AND g.kind='CUSTOMER' AND g.active=1 AND gm.client_id=t.client_id AND g.client_id=t.client_id AND JSON_CONTAINS(g.permissions,JSON_QUOTE('{permission}')))";
-    private static string PortalScope(bool reply = false) => $"(c.user_id=@actor OR {PortalGroup(reply ? "PORTAL_ORGANIZATION_REPLY" : "PORTAL_ORGANIZATION_VIEW")}) AND c.active=1 AND cl.status='ACTIVE' AND cl.organization_type='CLIENT' AND {FScope("t")}";
+    private static string PortalScope(bool reply = false) => $"(c.user_id=@actor OR {PortalGroup(reply ? "PORTAL_ORGANIZATION_REPLY" : "PORTAL_ORGANIZATION_VIEW")}) AND c.active=1 AND cl.status='ACTIVE' AND (cl.organization_type='CLIENT' OR (cl.id='00000000-0000-4000-8000-000000000132' AND EXISTS(SELECT 1 FROM users employee WHERE employee.id=@actor AND employee.work_scope IN ('INTERNAL','BOTH','ALL')))) AND {FScope("t")}";
     private const string PortalFrom = " FROM tickets t JOIN contacts c ON c.id=t.requester_id JOIN clients cl ON cl.id=t.client_id LEFT JOIN sites s ON s.id=t.site_id LEFT JOIN categories ca ON ca.id=t.category_id";
     private async Task<Dictionary<string, object?>> PortalOwn(string actor, string id, bool reply, MySqlConnection connection, MySqlTransaction? tx, CancellationToken ct)
     {
@@ -77,7 +77,7 @@ public sealed partial class MySqlStore
     public async Task<object> PortalOptions(string actor, CancellationToken ct)
     {
         await RequirePortal(actor, ct);
-        var contacts = await FQuery("SELECT c.id,c.client_id,c.site_id,c.name,cl.name AS client_name,d.site_id AS routing_site_id FROM contacts c JOIN clients cl ON cl.id=c.client_id LEFT JOIN client_email_domains d ON d.domain=LOWER(SUBSTRING_INDEX(c.email,'@',-1)) AND d.active=1 AND d.client_id=c.client_id WHERE c.user_id=@actor AND c.active=1 AND cl.status='ACTIVE' AND cl.organization_type='CLIENT' AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id=c.client_id)", ct, ("actor", actor));
+        var contacts = await FQuery("SELECT c.id,c.client_id,c.site_id,c.name,cl.name AS client_name,d.site_id AS routing_site_id FROM contacts c JOIN clients cl ON cl.id=c.client_id LEFT JOIN client_email_domains d ON d.domain=LOWER(SUBSTRING_INDEX(c.email,'@',-1)) AND d.active=1 AND d.client_id=c.client_id WHERE c.user_id=@actor AND c.active=1 AND cl.status='ACTIVE' AND (cl.organization_type='CLIENT' OR (cl.id='00000000-0000-4000-8000-000000000132' AND EXISTS(SELECT 1 FROM users employee WHERE employee.id=@actor AND employee.work_scope IN ('INTERNAL','BOTH','ALL')))) AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id=c.client_id)", ct, ("actor", actor));
         var sites = await FQuery("SELECT s.id,s.client_id,s.name FROM sites s WHERE s.active=1 AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id=s.client_id) AND (NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor AND us.site_id=s.id)) ORDER BY s.name", ct, ("actor", actor));
         return new
         {
@@ -155,7 +155,7 @@ public sealed partial class MySqlStore
         await using var c = CreateConnection();
         await c.OpenAsync(ct);
         await using var tx = await c.BeginTransactionAsync(ct);
-        var contact = (await FRows(c, tx, "SELECT c.* FROM contacts c JOIN clients cl ON cl.id=c.client_id WHERE c.id=@id AND c.user_id=@actor AND c.active=1 AND cl.status='ACTIVE' AND cl.organization_type='CLIENT' AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id=c.client_id) FOR SHARE", ct, ("id", contactId), ("actor", actor))).FirstOrDefault() ?? throw new UnauthorizedAccessException();
+        var contact = (await FRows(c, tx, "SELECT c.* FROM contacts c JOIN clients cl ON cl.id=c.client_id WHERE c.id=@id AND c.user_id=@actor AND c.active=1 AND cl.status='ACTIVE' AND (cl.organization_type='CLIENT' OR (cl.id='00000000-0000-4000-8000-000000000132' AND EXISTS(SELECT 1 FROM users employee WHERE employee.id=@actor AND employee.work_scope IN ('INTERNAL','BOTH','ALL')))) AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id=c.client_id) FOR SHARE", ct, ("id", contactId), ("actor", actor))).FirstOrDefault() ?? throw new UnauthorizedAccessException();
         var client = (string)contact["client_id"]!;
         var routing = (await FRows(c, tx, "SELECT client_id,site_id FROM client_email_domains WHERE domain=LOWER(SUBSTRING_INDEX(@email,'@',-1)) AND active=1 FOR SHARE", ct, ("email", contact["email"]))).FirstOrDefault();
         if (routing is not null && !Equals(routing["client_id"], client))
@@ -207,8 +207,7 @@ public sealed partial class MySqlStore
         {
             commentId = comment
         }, ct);
-        if (ticket["assigned_user_id"] is string assigned)
-            await InsertNotification(c, tx, assigned, id, "PUBLIC_REPLY", $"{ticket["ticket_number"]} received a client reply", (string)ticket["subject"]!, "portal-reply:" + comment, ct);
+        await QueueTicketInAppEvent(c, tx, actor, id, comment, "Client reply added", ct);
         await tx.CommitAsync(ct);
         return new
         {

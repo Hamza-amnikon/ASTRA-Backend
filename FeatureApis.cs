@@ -15,6 +15,7 @@ public static partial class FeatureApis
                 return Error(403, "INVALID_CSRF", "Your session could not be verified. Refresh and try again.");
             return await next(invocation);
         });
+        MapNotificationDelivery(api);
         MapGroups(api);
         MapReports(api);
         MapChanges(api);
@@ -23,6 +24,8 @@ public static partial class FeatureApis
         MapDomains(api);
         MapAdminEdits(api);
         MapProblemEdits(api);
+        MapTicketQa(api);
+        MapProfile(api);
         MapIdentityDirectory(api);
         MapPortal(api);
         MapHelp(api);

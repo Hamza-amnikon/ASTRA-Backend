@@ -4,7 +4,8 @@ public sealed class FeatureSchemaStartup(MySqlStore store, IConfiguration config
 {
     public async Task StartAsync(CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(config.GetConnectionString("MySql")))
+        if (config.GetValue<bool>("ASTRA_SKIP_FEATURE_SCHEMA_STARTUP") ||
+            string.IsNullOrWhiteSpace(config.GetConnectionString("MySql")))
             return;
         await store.EnsureFeatureStorage(ct);
     }

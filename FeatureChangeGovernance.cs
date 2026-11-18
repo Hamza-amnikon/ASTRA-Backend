@@ -73,7 +73,7 @@ public sealed partial class MySqlStore
                 if (quorum < 1 || quorum > 50 || members.Length > 50 || members.Distinct().Count() != members.Length || members.Length < quorum)
                     throw new ArgumentException("Choose unique CAB members and a quorum within the member count.");
                 foreach (var member in members)
-                if ((await FRows(c, tx, "SELECT u.id FROM users u WHERE id=@id AND active=1 AND (change_access<>'NONE' OR EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='ADMIN')) FOR SHARE", ct, ("id", member))).Count == 0)
+                if ((await FRows(c, tx, "SELECT u.id FROM users u WHERE id=@id AND active=1 AND (change_access<>'NONE' OR EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('ADMIN','TECHNICIAN','TEAM_LEAD'))) FOR SHARE", ct, ("id", member))).Count == 0)
                     throw new ArgumentException("Choose active CAB members with Change Management access.");
                 await FExecute(c, tx, id is null ? "INSERT INTO cab_groups(id,name,quorum,active) VALUES(@id,@name,@quorum,@active)" : "UPDATE cab_groups SET name=@name,quorum=@quorum,active=@active WHERE id=@id", ct, ("id", entity), ("name", name), ("quorum", quorum), ("active", JBool(b, "active", true)));
                 await FExecute(c, tx, "DELETE FROM cab_members WHERE group_id=@id", ct, ("id", entity));
@@ -198,7 +198,7 @@ public sealed partial class MySqlStore
                 throw new ArgumentException("Request CAB in a new assessment round before sending for approval.");
             var groupId = FGuid(JString(b, "groupId"), "CAB group");
             var group = (await FRows(c, tx, "SELECT * FROM cab_groups WHERE id=@id AND active=1 FOR SHARE", ct, ("id", groupId))).FirstOrDefault() ?? throw new ArgumentException("Choose an active CAB group.");
-            var members = await FRows(c, tx, "SELECT u.id FROM cab_members m JOIN users u ON u.id=m.user_id WHERE m.group_id=@group AND u.active=1 AND u.id<>@owner AND u.id<>@requester AND (EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='ADMIN') OR (u.change_access<>'NONE' AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=u.id AND cu.client_id=@client)))", ct, ("group", groupId), ("owner", change["owner_user_id"]), ("requester", change["requested_by_user_id"]), ("client", change["client_id"]));
+            var members = await FRows(c, tx, "SELECT u.id FROM cab_members m JOIN users u ON u.id=m.user_id WHERE m.group_id=@group AND u.active=1 AND u.id<>@owner AND u.id<>@requester AND (EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='ADMIN') OR ((u.change_access<>'NONE' OR EXISTS(SELECT 1 FROM user_roles staff_role WHERE staff_role.user_id=u.id AND staff_role.role_code IN ('TECHNICIAN','TEAM_LEAD'))) AND EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=u.id AND cu.client_id=@client)))", ct, ("group", groupId), ("owner", change["owner_user_id"]), ("requester", change["requested_by_user_id"]), ("client", change["client_id"]));
             if (members.Count < FInt(group["quorum"]))
                 throw new ArgumentException("Not enough independent CAB members have access to this client.");
             foreach (var member in members)

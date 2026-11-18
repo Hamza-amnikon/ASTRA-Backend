@@ -5,6 +5,7 @@ public sealed partial class MySqlStore
 {
     private static async Task QueueTicketEvent(MySqlConnection connection, MySqlTransaction tx, string? actor, string ticket, string? comment, string eventName, CancellationToken ct)
     {
+        await QueueTicketInAppEvent(connection, tx, actor, ticket, comment, eventName, ct);
         var settings = (await FRows(connection, tx, "SELECT enabled,ticket_address FROM mail_settings WHERE id=1", ct)).FirstOrDefault();
         if (settings is null || !FBool(settings["enabled"]) || settings["ticket_address"] is not string sender)
             return;

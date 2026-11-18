@@ -22,7 +22,7 @@ public sealed partial class MySqlStore
     {
         await FExecute(c, tx, "INSERT IGNORE INTO notifications(user_id,ticket_id,type,title,body,event_key) SELECT @user,@ticket,@type,@title,@body,@key FROM users u WHERE u.id=@user AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6)) AND (@type<>'PUBLIC_REPLY' OR COALESCE((SELECT public_reply FROM notification_preferences p WHERE p.user_id=u.id),1)=1)", ct, ("user", user), ("ticket", ticket), ("type", type), ("title", title), ("body", body), ("key", key));
     }
-    private static string SafeHelpQuery(string input) => Regex.Replace(Regex.Replace(input, @"https?://\S+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b\d{1,3}(?:\.\d{1,3}){3}\b|\b[0-9a-fA-F]{8}-[0-9a-fA-F-]{27,}\b|\b[A-Z]{2,8}-\d{3,10}\b", " ", RegexOptions.IgnoreCase), @"\s+", " ").Trim();
+    private static string SafeHelpQuery(string input) => Regex.Replace(Regex.Replace(input, @"(?:password|secret|token|api[_ -]?key)\s*[:=]\s*\S+|https?://\S+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b\d{1,3}(?:\.\d{1,3}){3}\b|\b[0-9a-fA-F]{8}-[0-9a-fA-F-]{27,}\b|\b[A-Z]{2,8}-\d{3,10}\b", " ", RegexOptions.IgnoreCase), @"\s+", " ").Trim();
     public async Task<object> SearchHelp(string actor, JsonElement b, CancellationToken ct)
     {
         var query = FText(JString(b, "question"), "Question", 2, 500);
@@ -31,8 +31,10 @@ public sealed partial class MySqlStore
         var tokens = Regex.Matches(query.ToLowerInvariant(), @"[\p{L}\p{N}]{2,}").Select(m => m.Value).Where(x => !new[] { "the", "and", "with", "for", "how", "can", "this", "that", "have", "please", "help" }.Contains(x)).Distinct().Take(12).ToArray();
         if (tokens.Length == 0)
             tokens = [query.ToLowerInvariant()];
+        var products = new[] { "outlook", "teams", "windows", "vpn", "printer", "wifi", "linux", "excel", "word", "onedrive", "sharepoint" }.Where(product => Regex.IsMatch(query, @"\b" + product + @"\b", RegexOptions.IgnoreCase)).ToArray();
+        var symptoms = new[] { "offline", "disconnect", "freeze", "crash", "password", "slow", "error", "timeout" }.Where(word => query.Contains(word, StringComparison.OrdinalIgnoreCase)).ToArray();
         var hits = new List<HelpHit>();
-        int Score(string title, string body) => tokens.Sum(token => title.Contains(token, StringComparison.OrdinalIgnoreCase) ? 5 : body.Contains(token, StringComparison.OrdinalIgnoreCase) ? 2 : 0);
+        int Score(string title, string body) => products.Length > 0 && !products.Any(product => (title + " " + body).Contains(product, StringComparison.OrdinalIgnoreCase)) ? 0 : tokens.Where(token => !new[] { "issue", "issues", "problem", "problems", "working", "work", "not" }.Contains(token)).Sum(token => title.Contains(token, StringComparison.OrdinalIgnoreCase) ? 5 : body.Contains(token, StringComparison.OrdinalIgnoreCase) ? 2 : 0);
         foreach (var raw in topics)
         {
             var topic = JsonSerializer.SerializeToElement(raw);
@@ -110,6 +112,22 @@ public sealed partial class MySqlStore
             }
             catch (FeatureFailure) { webNote = "Local results are shown. The configured web search provider was unavailable."; }
         }
+        // Fixed official links are documentation destinations, not live outage news.
+        if (safe.Length >= 3 && !results.Any(hit => hit.SourceType == "web"))
+        {
+            var official = new List<HelpHit>();
+            void Document(string title, string href, string summary) => official.Add(new("web", href, title, summary, 10, ["Official Microsoft documentation"], href));
+            if (products.Contains("outlook"))
+            {
+                Document("Troubleshoot Outlook sending and receiving email", "https://support.microsoft.com/en-us/outlook/issues-sending-and-receiving-email", "Open Microsoft's Outlook troubleshooting guidance for sending and receiving email.");
+                Document("Known issues in classic Outlook for Windows", "https://support.microsoft.com/en-gb/support/known-issues/fixes-or-workarounds-for-recent-issues-in-classic-outlook-for-windows", "Open Microsoft's published Outlook issues and workarounds.");
+            }
+            if (products.Contains("printer")) Document("Troubleshoot an offline printer in Windows", "https://support.microsoft.com/en-us/windows/hardware/printer/troubleshooting-offline-printer-problems-in-windows", "Open Microsoft's printer connectivity and offline troubleshooting guide.");
+            var url = "https://learn.microsoft.com/en-us/search/?terms=" + Uri.EscapeDataString(safe);
+            official.Add(new("web", url, "Search Microsoft Learn for: " + safe, "Search official documentation for this question. This opens a search page, not a pre-fetched article.", 1, ["Official documentation search link"], url));
+            results = official.Concat(results).DistinctBy(hit => hit.Href).Take(8).ToArray();
+            webNote = "Official documentation links are shown. Live web search is not configured or returned no web matches.";
+        }
         await using var c = CreateConnection();
         await c.OpenAsync(ct);
         await using var tx = await c.BeginTransactionAsync(ct);
@@ -123,9 +141,9 @@ public sealed partial class MySqlStore
         {
             answer = results.Length > 0 ? "I found related guidance and records within your access." : "No local match was found. Try a product name, symptom, or error message.",
             normalizedQuery = string.Join(' ', tokens),
-            detectedProducts = Array.Empty<string>(),
-            detectedSymptoms = Array.Empty<string>(),
-            results,
+            detectedProducts = products,
+            detectedSymptoms = symptoms,
+            results = results.Select(hit => hit.SourceType == "web" ? hit with { Id = "web:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(hit.Href))) } : hit).ToArray(),
             suggestions = results.Length > 0 ? Array.Empty<string>() : new[] { "Include the affected product and the exact error message." },
             webNote
         };

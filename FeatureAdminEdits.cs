@@ -30,6 +30,29 @@ public sealed partial class MySqlStore
         if (resource == "clients" && id == "00000000-0000-4000-8000-000000000132")
             throw new InvalidOperationException("The internal organization is protected.");
     }
+    private static string RequireClientStaffDomain(string? value)
+    {
+        var domain = value?.Trim();
+        if (domain?.StartsWith('@') == true)
+        {
+            try { return "@" + NormalizeDomain(domain[1..]); }
+            catch (ArgumentException) { throw new ArgumentException("Enter a valid staff email domain, such as @company.com."); }
+        }
+        throw new ArgumentException("Enter the client's staff email domain, such as @company.com.");
+    }
+
+    private static async Task EnsureClientPrimaryEmailAvailable(
+        MySqlConnector.MySqlConnection connection, MySqlConnector.MySqlTransaction transaction,
+        string domain, string? clientId, CancellationToken ct)
+    {
+        // A locking read keeps concurrent changes to the same domain from both succeeding.
+        var matches = await FRows(connection, transaction,
+            "SELECT id FROM clients WHERE LOWER(TRIM(primary_email))=LOWER(@domain) AND (@id IS NULL OR id<>@id) LIMIT 1 FOR UPDATE",
+            ct, ("domain", domain), ("id", clientId));
+        if (matches.Count > 0)
+            throw new ArgumentException("This staff email domain already belongs to another client.");
+    }
+
     public async Task<object> UpdateDirectoryRecord(string actor, string resource, string id, JsonElement body, CancellationToken ct)
     {
         await RequireAdmin(actor, ct);
@@ -53,15 +76,30 @@ public sealed partial class MySqlStore
         }
         if (fields.TryGetValue("ticketPrefix", out var prefix) && prefix is string text && !Regex.IsMatch(text, "^[A-Z][A-Z0-9]{1,7}$"))
             throw new ArgumentException("Ticket prefix must be 2–8 uppercase letters or numbers, beginning with a letter.");
-        foreach (var key in new[] { "email", "primaryEmail" })
-        if (fields.GetValueOrDefault(key) is string mail && mail.Length > 0 && !System.Net.Mail.MailAddress.TryCreate(mail, out _))
+        if (fields.GetValueOrDefault("email") is string mail && mail.Length > 0 && !System.Net.Mail.MailAddress.TryCreate(mail, out _))
             throw new ArgumentException("Enter a valid email address.");
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        await using var tx = await connection.BeginTransactionAsync(ct);
+        await using var tx = resource == "clients"
+            ? await connection.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct)
+            : await connection.BeginTransactionAsync(ct);
         if (resource == "categories")
             await FRows(connection, tx, "SELECT id FROM categories ORDER BY id FOR UPDATE", ct);
         var before = (await FRows(connection, tx, $"SELECT * FROM {config.Table} WHERE {config.Key}=@id FOR UPDATE", ct, ("id", id))).FirstOrDefault() ?? throw new KeyNotFoundException();
+        if (resource == "clients")
+        {
+            var current = before["primary_email"] as string;
+            var requested = fields["primaryEmail"] as string;
+            if (!body.TryGetProperty("primaryEmail", out _) ||
+                string.Equals(requested ?? "", current?.Trim() ?? "", StringComparison.Ordinal))
+                fields["primaryEmail"] = current;
+            else
+            {
+                var domain = RequireClientStaffDomain(requested);
+                await EnsureClientPrimaryEmailAvailable(connection, tx, domain, id, ct);
+                fields["primaryEmail"] = domain;
+            }
+        }
         if (resource is "contacts" or "sites" or "assets")
         {
             if (!Equals(fields["clientId"], before["client_id"]))
@@ -80,10 +118,16 @@ public sealed partial class MySqlStore
             fields["ticketPrefix"] = before["ticket_prefix"];
         var args = fields.Select(p => (p.Key, p.Value)).Append(("id", (object?)id)).Append(("active", resource == "clients" ? (object)(active.GetBoolean() ? "ACTIVE" : "INACTIVE") : active.GetBoolean())).ToArray();
         await FExecute(connection, tx, $"UPDATE {config.Table} SET {string.Join(',', config.Fields.Select(f => Column(f) + "=@" + f))},{(resource == "clients" ? "status" : "active")}=@active,updated_at=UTC_TIMESTAMP(6) WHERE {config.Key}=@id", ct, args);
+        var auditFields = config.Fields.Select(Column)
+            .Where(field => field is "name" or "ticket_prefix" or "client_id" or "site_id" or "parent_id" or "asset_type")
+            .Append(resource == "clients" ? "status" : "active").ToArray();
+        var saved = (await FRows(connection, tx,
+            $"SELECT {string.Join(',', auditFields)} FROM {config.Table} WHERE {config.Key}=@id", ct, ("id", id)))[0];
         await AddAudit(connection, tx, actor, "DIRECTORY.UPDATED", resource.ToUpperInvariant(), id, new
         {
-            fields = config.Fields,
-            active = active.GetBoolean()
+            name = saved.GetValueOrDefault("name"),
+            before = auditFields.ToDictionary(field => field, field => before[field]),
+            after = saved
         }, ct);
         await tx.CommitAsync(ct);
         return new
@@ -128,15 +172,43 @@ public sealed partial class MySqlStore
         (string Table, string Column)[] dependencies = resource switch
         {
             "clients" => [("contacts", "client_id"), ("sites", "client_id"), ("assets", "client_id"), ("client_users", "client_id"), ("tickets", "client_id"), ("changes", "client_id"), ("problems", "client_id")],
-            "sites" => [("assets", "site_id"), ("contacts", "site_id"), ("tickets", "site_id"), ("changes", "site_id"), ("problems", "site_id")],
+            "sites" => [("assets", "site_id"), ("contacts", "site_id"), ("tickets", "site_id"), ("changes", "site_id"), ("problems", "site_id"), ("client_email_domains", "site_id"), ("user_sites", "site_id")],
             "categories" => [("categories", "parent_id"), ("tickets", "category_id")],
             "sources" => [("tickets", "source")],
             _ => []
         };
+        var hasLinkedRecords = false;
         foreach (var dependency in dependencies)
-        if ((await FRows(connection, tx, $"SELECT 1 FROM {dependency.Table} WHERE {dependency.Column}=@id LIMIT 1", ct, ("id", id))).Count > 0)
+        {
+            if ((await FRows(connection, tx, $"SELECT 1 FROM {dependency.Table} WHERE {dependency.Column}=@id LIMIT 1", ct, ("id", id))).Count == 0)
+                continue;
+            hasLinkedRecords = true;
+            break;
+        }
+        if (hasLinkedRecords && resource != "sites")
             throw new InvalidOperationException("This record has linked records. Deactivate it to retain its history.");
-        await FExecute(connection, tx, $"DELETE FROM {config.Table} WHERE {config.Key}=@id", ct, ("id", id));
+
+        if (!hasLinkedRecords)
+        {
+            try
+            {
+                await FExecute(connection, tx, $"DELETE FROM {config.Table} WHERE {config.Key}=@id", ct, ("id", id));
+            }
+            catch (MySqlConnector.MySqlException error) when (resource == "sites" && error.Number == 1451)
+            {
+                // A database relationship outside the explicit checks still protects this site.
+                hasLinkedRecords = true;
+            }
+        }
+
+        if (hasLinkedRecords)
+        {
+            await FExecute(connection, tx, "UPDATE sites SET active=0,updated_at=UTC_TIMESTAMP(6) WHERE id=@id", ct, ("id", id));
+            await AddAudit(connection, tx, actor, "SITE.DEACTIVATED", "SITE", id,
+                new { reason = "Retained linked site records" }, ct);
+            await tx.CommitAsync(ct);
+            return new { id, deleted = false, deactivated = true };
+        }
         await AddAudit(connection, tx, actor, "DIRECTORY.DELETED", resource.ToUpperInvariant(), id, new
         {
         }, ct);
@@ -152,7 +224,7 @@ public sealed partial class MySqlStore
         if ((await FRows(connection, tx, "SELECT u.id FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.active=1 AND r.role_code='ADMIN' AND u.id<>@id LIMIT 1", ct, ("id", id))).Count == 0)
             throw new InvalidOperationException("At least one active administrator must remain.");
     }
-    public async Task<object> UpdateUserAccess(string actor, string id, JsonElement body, CancellationToken ct, DirectoryIdentity? provision = null)
+    public async Task<object> UpdateUserAccess(string actor, string id, JsonElement body, CancellationToken ct, DirectoryIdentity? provision = null, bool demoStaff = false)
     {
         await RequireAdmin(actor, ct);
         var roles = JArray(body, "roles").Select(x => x.GetString() ?? "").ToArray();
@@ -165,6 +237,8 @@ public sealed partial class MySqlStore
         var departments = Ids("departmentIds");
         var leads = Ids("leadDepartmentIds");
         var scope = role == "ADMIN" ? "ALL" : JOptional(body, "workScope") ?? "CLIENT";
+        if (scope == "CLIENT" && Ids("clientIds").SequenceEqual(new[] { "00000000-0000-4000-8000-000000000132" }))
+            scope = "INTERNAL";
         if (!new[] { "INTERNAL", "CLIENT", "BOTH", "ALL" }.Contains(scope))
             throw new ArgumentException("Choose a valid work scope.");
         if (role != "ADMIN" && scope == "ALL")
@@ -185,7 +259,7 @@ public sealed partial class MySqlStore
         var requested = JArray(body, "permissions").Select(x => x.GetString() ?? "").ToArray();
         if (requested.Any(x => !StaffPermissions.Contains(x) && !new[] { "AUDIT_VIEW", "USERS_MANAGE", "CLIENTS_MANAGE", "CONTACTS_MANAGE", "SITES_MANAGE" }.Contains(x)))
             throw new ArgumentException("Invalid permission.");
-        var permissions = role == "ADMIN" ? Array.Empty<string>() : role == "MANAGER" ? StaffPermissions.Append("AUDIT_VIEW").ToArray() : role == "TEAM_LEAD" ? new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "CATEGORY_MANAGE", "TAGS_MANAGE", "REPORTS_VIEW" } : role == "TECHNICIAN" ? new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN" } : Array.Empty<string>();
+        var permissions = role == "ADMIN" ? Array.Empty<string>() : role == "MANAGER" ? StaffPermissions.Append("AUDIT_VIEW").ToArray() : role == "TEAM_LEAD" ? new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "CATEGORY_MANAGE", "TAGS_MANAGE", "REPORTS_VIEW" } : role == "TECHNICIAN" ? DefaultRolePolicy("TECHNICIAN") : Array.Empty<string>();
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
         await using var tx = await connection.BeginTransactionAsync(ct);
@@ -201,8 +275,15 @@ public sealed partial class MySqlStore
         if (scope is "INTERNAL" or "BOTH" or "ALL")
             clients.Add("00000000-0000-4000-8000-000000000132");
         foreach (var client in clients)
-        if ((await FRows(connection, tx, "SELECT id FROM clients WHERE id=@id AND status='ACTIVE'", ct, ("id", client))).Count == 0)
-            throw new ArgumentException("Select active clients.");
+        {
+            var clientSql = "SELECT primary_email FROM clients WHERE id=@id AND status='ACTIVE'";
+            var record = (await FRows(connection, tx, demoStaff ? clientSql + " FOR SHARE" : clientSql, ct, ("id", client))).FirstOrDefault();
+            if (record is null)
+                throw new ArgumentException("Select active clients.");
+            if (demoStaff && provision is not null && (client != "00000000-0000-4000-8000-000000000132" || clients.Count == 1) && record["primary_email"] is string domain && domain.StartsWith('@') &&
+                !string.Equals(domain, DemoLoginDomain(provision.Email), StringComparison.Ordinal))
+                throw new ArgumentException($"Use a staff sign-in email ending in {domain} for this client.");
+        }
         foreach (var site in sites)
         if (!(await FRows(connection, tx, "SELECT client_id FROM sites WHERE id=@id AND active=1", ct, ("id", site))).Any(x => clients.Contains((string)x["client_id"]!)))
             throw new ArgumentException("Sites must belong to assigned clients.");

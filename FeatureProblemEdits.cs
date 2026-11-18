@@ -19,11 +19,13 @@ public sealed partial class MySqlStore
             throw new UnauthorizedAccessException();
         await using var tx = await connection.BeginTransactionAsync(ct);
         var row = (await FRows(connection, tx, $"SELECT p.* FROM problems p WHERE p.id=@id AND {FScope("p")} FOR UPDATE", ct, ("id", id), ("actor", actor), ("admin", admin))).FirstOrDefault() ?? throw new KeyNotFoundException();
+        Dictionary<string, object?> auditDetails;
         if (note)
         {
             if ((string)row["status"]! == "CLOSED")
                 throw new ArgumentException("Reopen the problem before adding notes.");
             var text = FText(JString(body, "body"), "Investigation note", 2, 5000);
+            auditDetails = new() { ["problemNumber"] = row["problem_number"], ["body"] = text };
             await FExecute(connection, tx, "INSERT INTO problem_history(problem_id,actor_user_id,action,details) VALUES(@id,@actor,'PROBLEM.NOTE',JSON_OBJECT('body',@body))", ct, ("id", id), ("actor", actor), ("body", text));
         }
         else
@@ -63,11 +65,22 @@ public sealed partial class MySqlStore
             if (!Equals(row["owner_user_id"], owner) && (await FRows(connection, tx, "SELECT u.id FROM users u WHERE u.id=@owner AND u.active=1 AND EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('ADMIN','MANAGER','TEAM_LEAD','TECHNICIAN')) AND (EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=u.id AND cu.client_id=@client)) AND (NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id AND us.site_id=@site))", ct, ("owner", owner), ("client", row["client_id"]), ("site", row["site_id"]))).Count == 0)
                 throw new ArgumentException("Choose an active support owner with access to this client and site.");
             await FExecute(connection, tx, "UPDATE problems SET title=@title,description=@description,priority=@priority,status=@status,root_cause=@root,workaround=@workaround,resolution=@resolution,owner_user_id=@owner,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=@id", ct, ("id", id), ("title", title), ("description", description), ("priority", priority), ("status", status), ("root", root), ("workaround", workaround), ("resolution", resolution), ("owner", owner));
-            await FExecute(connection, tx, "INSERT INTO problem_history(problem_id,actor_user_id,action,details) VALUES(@id,@actor,'PROBLEM.UPDATED',JSON_OBJECT('previousStatus',@old,'status',@status,'ownerUserId',@owner))", ct, ("id", id), ("actor", actor), ("old", old), ("status", status), ("owner", owner));
+            auditDetails = ProblemAuditDetails.Changes(Convert.ToString(row["problem_number"]) ?? "Problem",
+                new Dictionary<string, object?> {
+                    ["title"] = row["title"], ["description"] = row["description"], ["priority"] = row["priority"],
+                    ["status"] = row["status"], ["ownerUserId"] = row["owner_user_id"], ["rootCause"] = row["root_cause"],
+                    ["workaround"] = row["workaround"], ["resolution"] = row["resolution"]
+                }, new Dictionary<string, object?> {
+                    ["title"] = title, ["description"] = description, ["priority"] = priority, ["status"] = status,
+                    ["ownerUserId"] = owner, ["rootCause"] = root, ["workaround"] = workaround, ["resolution"] = resolution
+                });
+            auditDetails["previousStatus"] = old;
+            auditDetails["status"] = status;
+            auditDetails["ownerUserId"] = owner;
+            await FExecute(connection, tx, "INSERT INTO problem_history(problem_id,actor_user_id,action,details) VALUES(@id,@actor,'PROBLEM.UPDATED',CAST(@details AS JSON))", ct,
+                ("id", id), ("actor", actor), ("details", FJson(auditDetails)));
         }
-        await AddAudit(connection, tx, actor, note ? "PROBLEM.NOTE" : "PROBLEM.UPDATED", "PROBLEM", id, new
-        {
-        }, ct);
+        await AddAudit(connection, tx, actor, note ? "PROBLEM.NOTE" : "PROBLEM.UPDATED", "PROBLEM", id, auditDetails, ct);
         await tx.CommitAsync(ct);
         return note ? new
         {

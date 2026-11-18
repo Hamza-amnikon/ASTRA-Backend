@@ -60,11 +60,16 @@ public sealed partial class MySqlStore
             throw new ArgumentException($"Enter a valid {key}.");
         return date;
     }
+    private static string EffectiveChangeAccess(string? configured, bool technician, bool teamLead) =>
+        teamLead ? "CHANGE_MANAGER" :
+        technician && (configured is null or "NONE") ? "CONTRIBUTOR" :
+        configured ?? "NONE";
+
     private async Task<(bool Admin, bool Manager, bool Coordinator)> ChangeActor(string actor, CancellationToken ct)
     {
         var admin = await IsAdministrator(actor, ct);
-        var user = (await FQuery("SELECT change_access FROM users WHERE id=@id AND active=1 AND (access_expires_at IS NULL OR access_expires_at>UTC_TIMESTAMP(6))", ct, ("id", actor))).FirstOrDefault() ?? throw new UnauthorizedAccessException();
-        var access = (string?)user["change_access"] ?? "NONE";
+        var user = (await FQuery("SELECT u.change_access,EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='TECHNICIAN') AS technician,EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='TEAM_LEAD') AS team_lead FROM users u WHERE u.id=@id AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6))", ct, ("id", actor))).FirstOrDefault() ?? throw new UnauthorizedAccessException();
+        var access = EffectiveChangeAccess((string?)user["change_access"], FBool(user["technician"]), FBool(user["team_lead"]));
         if (!admin && access == "NONE")
             throw new UnauthorizedAccessException();
         return (admin, admin || access == "CHANGE_MANAGER", admin || access is "COORDINATOR" or "CHANGE_MANAGER");
@@ -87,13 +92,16 @@ public sealed partial class MySqlStore
     }
     public async Task<object> ChangeOptions(string actor, CancellationToken ct)
     {
-        await ChangeActor(actor, ct);
+        var access = await ChangeActor(actor, ct);
         var clients = await ListClients(actor, ct);
         var sites = await ListClientDirectory(actor, null, "sites", ct);
         var contacts = await ListClientDirectory(actor, null, "contacts", ct);
-        var users = await FQuery("SELECT u.id,u.display_name AS name,GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') AS departments,GROUP_CONCAT(DISTINCT du.expertise SEPARATOR '; ') AS expertise FROM users u LEFT JOIN department_users du ON du.user_id=u.id LEFT JOIN departments d ON d.id=du.department_id WHERE u.active=1 AND EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN')) GROUP BY u.id,u.display_name ORDER BY u.display_name", ct);
+        var users = await FQuery("SELECT u.id,u.display_name AS name,GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') AS departments,GROUP_CONCAT(DISTINCT du.expertise SEPARATOR '; ') AS expertise FROM users u LEFT JOIN department_users du ON du.user_id=u.id LEFT JOIN departments d ON d.id=du.department_id WHERE u.active=1 AND EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN')) AND (@admin OR u.id=@actor OR EXISTS(SELECT 1 FROM client_users candidate JOIN client_users own ON own.client_id=candidate.client_id WHERE candidate.user_id=u.id AND own.user_id=@actor)) GROUP BY u.id,u.display_name ORDER BY u.display_name", ct, ("admin", access.Admin), ("actor", actor));
+        users = await FilterOfficialTeamMembers(actor, users, ct);
         var departments = await ListDepartments(ct);
         var tickets = await ListTickets(actor, "all", null, "", 1, 100, ct);
+        if (tickets.Forbidden)
+            tickets = await ListTickets(actor, "my", null, "", 1, 100, ct);
         var mail = (await FQuery("SELECT enabled,change_address FROM mail_settings WHERE id=1", ct)).FirstOrDefault();
         return new
         {

@@ -38,7 +38,8 @@ public sealed record TechnicianReportResult(string From, string To, string? Tech
 
 public sealed partial class MySqlStore
 {
-    private static string FScope(string alias) => $"(@admin=1 OR (EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id={alias}.client_id) AND (NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor AND us.site_id={alias}.site_id))))";
+    private static string InternalTicketVisibility(string alias, string actor) => alias != "t" ? "1=1" : $"({alias}.client_id<>'00000000-0000-4000-8000-000000000132' OR {alias}.created_by_user_id={actor} OR EXISTS(SELECT 1 FROM contacts own WHERE own.id={alias}.requester_id AND own.user_id={actor}) OR EXISTS(SELECT 1 FROM user_roles ir WHERE ir.user_id={actor} AND (ir.role_code='ADMIN' OR (ir.role_code IN ('TEAM_LEAD','MANAGER') AND ({alias}.assigned_user_id={actor} OR EXISTS(SELECT 1 FROM client_users mine JOIN client_users target ON target.client_id=mine.client_id WHERE mine.user_id={actor} AND target.user_id={alias}.assigned_user_id AND mine.client_id<>'00000000-0000-4000-8000-000000000132'))))))";
+    private static string FScope(string alias) => $"({InternalTicketVisibility(alias, "@actor")}) AND (@admin=1 OR (EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@actor AND cu.client_id={alias}.client_id) AND (NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@actor AND us.site_id={alias}.site_id))))";
     private async Task<bool> RequireReport(string actor, CancellationToken ct)
     {
         var admin = await IsAdministrator(actor, ct);
@@ -68,8 +69,8 @@ public sealed partial class MySqlStore
         var scope = FScope("t") + " AND (@client IS NULL OR t.client_id=@client)";
         var totals = (await FQuery($"SELECT COALESCE(SUM(t.created_at>=@start AND t.created_at<@end),0) AS created,COALESCE(SUM(t.resolved_at>=@start AND t.resolved_at<@end),0) AS resolved,COALESCE(SUM(t.status NOT IN ('RESOLVED','CLOSED','CANCELLED')),0) AS open_now,CAST(ROUND(AVG(CASE WHEN t.resolved_at>=@start AND t.resolved_at<@end THEN TIMESTAMPDIFF(SECOND,t.created_at,t.resolved_at)/3600.0 END),1) AS CHAR) AS average_resolution_hours FROM tickets t WHERE {scope}", ct, args))[0];
         var sources = await FQuery($"SELECT t.source,COUNT(*) AS count FROM tickets t WHERE {scope} AND t.created_at>=@start AND t.created_at<@end GROUP BY t.source ORDER BY count DESC", ct, args);
-        var changeAccess = await FQuery("SELECT change_access FROM users WHERE id=@id", ct, ("id", actor));
-        var changes = admin || changeAccess.Any(x => (string?)x["change_access"] != "NONE") ? await FQuery($"SELECT t.status,COUNT(*) AS count FROM changes t WHERE {scope} AND t.created_at>=@start AND t.created_at<@end GROUP BY t.status ORDER BY count DESC", ct, args) : [];
+        var changeAccess = await FQuery("SELECT u.id FROM users u WHERE u.id=@id AND (u.change_access<>'NONE' OR EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('TECHNICIAN','TEAM_LEAD')))", ct, ("id", actor));
+        var changes = admin || changeAccess.Count > 0 ? await FQuery($"SELECT t.status,COUNT(*) AS count FROM changes t WHERE {scope} AND t.created_at>=@start AND t.created_at<@end GROUP BY t.status ORDER BY count DESC", ct, args) : [];
         var knowledge = (await FQuery($"SELECT COUNT(*) AS article_links FROM ticket_knowledge_links l JOIN tickets t ON t.id=l.ticket_id WHERE {scope} AND l.created_at>=@start AND l.created_at<@end", ct, args))[0];
         return new
         {

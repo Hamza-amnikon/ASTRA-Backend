@@ -28,6 +28,14 @@ public sealed partial class MySqlStore
             emailConfigured = mail["password_ciphertext"] is string { Length: > 0 } && mail["smtp_username"] is string { Length: > 0 } && MailConfigKey() is not null
         };
     }
+    private static string ValidateClientDomain(string value)
+    {
+        var domain = NormalizeDomain(value);
+        if (new[] { "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com", "yahoo.co.in", "icloud.com", "aol.com", "proton.me", "protonmail.com", "mail.com", "gmx.com" }.Contains(domain))
+            throw new ArgumentException("Shared personal email domains cannot identify a client. Use a client-owned work domain.");
+        return domain;
+    }
+
     public async Task<object> SaveClientDomain(string actor, string? id, JsonElement b, CancellationToken ct)
     {
         await RequireAdmin(actor, ct);
@@ -35,9 +43,7 @@ public sealed partial class MySqlStore
         var site = JOptional(b, "siteId");
         if (site is not null)
             FGuid(site, "site");
-        var domain = NormalizeDomain(JString(b, "domain"));
-        if (new[] { "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com", "yahoo.co.in", "icloud.com", "aol.com", "proton.me", "protonmail.com", "mail.com", "gmx.com" }.Contains(domain))
-            throw new ArgumentException("Shared personal email domains cannot identify a client. Use a client-owned work domain.");
+        var domain = ValidateClientDomain(JString(b, "domain"));
         await using var c = CreateConnection();
         await c.OpenAsync(ct);
         await using var tx = await c.BeginTransactionAsync(ct);

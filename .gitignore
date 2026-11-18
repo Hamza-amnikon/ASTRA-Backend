@@ -9,3 +9,11 @@ __pycache__/
 *.pyc
 *.dump
 *.sql.gz
+
+# Private runtime data and maintenance exports
+/App_Data/
+/local-maintenance/
+/*.sql
+*.pfx
+*.p12
+*.key

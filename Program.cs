@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(builder.Configuration["ASPNETCORE_URLS"] ?? "http://127.0.0.1:5200");
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<MySqlStore>();
+builder.Services.AddSingleton<TestPasswordAccounts>();
 builder.Services.AddSingleton<IMailTransport, MailKitTransport>();
 builder.Services.AddSingleton<IMailInbox, GraphMailInbox>();
 builder.Services.AddSingleton<IIdentityDirectory, GraphIdentityDirectory>();
@@ -22,6 +23,7 @@ builder.Services.AddHostedService<FeatureMailWorker>();
 builder.Services.AddHostedService<FeatureInboxWorker>();
 var authSettings = AuthSettings.Load(builder.Configuration);
 var localPreviewEnabled = builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("ASTRA_LOCAL_TEST_LOGIN");
+var passwordTestEnabled = TestPasswordAccounts.Enabled(builder.Environment, builder.Configuration);
 builder.Services.AddSingleton(authSettings);
 builder.Services.AddAuthentication(options =>
 {
@@ -39,8 +41,7 @@ builder.Services.AddAuthentication(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = Uri.TryCreate(authSettings.ApplicationBaseUrl, UriKind.Absolute, out var origin) && origin.Scheme == Uri.UriSchemeHttps
         ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
-    options.ExpireTimeSpan = TimeSpan.FromSeconds(builder.Configuration.GetValue("SESSION_TTL_SECONDS", 28800));
-    options.SlidingExpiration = false;
+    AuthSessionPolicy.Configure(options, AuthSessionPolicy.Lifetime(builder.Configuration));
     options.Events.OnRedirectToLogin = context =>
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -53,6 +54,15 @@ builder.Services.AddAuthentication(options =>
     };
     options.Events.OnValidatePrincipal = async context =>
     {
+        if (context.Principal?.HasClaim("astra-password-test", "true") == true &&
+            (!localPreviewEnabled || !passwordTestEnabled || !IsLocalPreviewRequest(context.HttpContext, authSettings) ||
+             !context.HttpContext.RequestServices.GetRequiredService<TestPasswordAccounts>().IsCurrent(
+                 context.Principal.FindFirstValue("astra-test-login"), context.Principal.FindFirstValue("astra-test-version"))))
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return;
+        }
         if (context.Principal?.HasClaim("astra-local-preview", "true") == true &&
             (!localPreviewEnabled || !IsLocalPreviewRequest(context.HttpContext, authSettings)))
         {
@@ -135,6 +145,10 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 app.UseExceptionHandler();
 app.Use(async (context, next) =>
 {
@@ -182,8 +196,40 @@ app.MapGet("/api/migration/database-health", async (CancellationToken cancellati
 app.MapGet("/api/auth/status", (HttpContext context, AuthSettings settings) =>
 {
     var localTestLogin = localPreviewEnabled && IsLocalPreviewRequest(context, settings);
-    return Results.Ok(new { configured = settings.Configured || localTestLogin, microsoftConfigured = settings.Configured, localTestLogin });
+    return Results.Ok(new { configured = settings.Configured || localTestLogin, microsoftConfigured = settings.Configured, localTestLogin, passwordTestLogin = localTestLogin && passwordTestEnabled });
 });
+app.MapPost("/api/auth/test-password", async (TestPasswordLogin body, HttpContext context, MySqlStore store, TestPasswordAccounts accounts, CancellationToken ct) =>
+{
+    if (!localPreviewEnabled || !passwordTestEnabled || !IsLocalPreviewRequest(context, authSettings)) return Results.NotFound();
+    if (!IsAllowedLocalPreviewOrigin(context, authSettings, context.Request.Headers.Origin.ToString())) return Results.Forbid();
+    var account = accounts.Authenticate(body);
+    if (account is null) return Results.Json(new { error = new { message = "Invalid username, email or password." } }, statusCode: 401);
+    var known = await store.FindPasswordTestAccount(account, ct);
+    if (known is null) return Results.Json(new { error = new { message = "This test account is disabled or unavailable." } }, statusCode: 401);
+    var identity = new ClaimsIdentity(new[] {
+        new Claim("astra-user-id", known.Id), new Claim("astra-session-version", known.SessionVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        new Claim("astra-local-preview", "true"),
+        new Claim("astra-password-test", "true"), new Claim("astra-test-login", account.Login), new Claim("astra-test-version", account.Version),
+        new Claim("astra-csrf", Convert.ToHexString(RandomNumberGenerator.GetBytes(32)))
+    }, CookieAuthenticationDefaults.AuthenticationScheme);
+    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity),
+        AuthSessionPolicy.SignIn(AuthSessionPolicy.Lifetime(builder.Configuration)));
+    return Results.Ok(new { authenticated = true });
+}).AllowAnonymous();
+app.MapPost("/api/admin/test-accounts", async (TestAccountCreate body, HttpContext context, MySqlStore store, TestPasswordAccounts accounts, CancellationToken ct) =>
+{
+    if (!localPreviewEnabled || !passwordTestEnabled || !IsLocalPreviewRequest(context, authSettings)) return Results.NotFound();
+    if (!HasValidCsrf(context, authSettings)) return Results.Forbid();
+    var actor = context.User.FindFirstValue("astra-user-id");
+    if (actor is null || !await store.IsAdministrator(actor, ct)) return Results.Forbid();
+    try {
+        var prepared = accounts.Prepare(body);
+        await store.ProvisionPasswordTestAccount(actor, prepared, body.Role, ct, body.ClientId, body.SupervisorUserId);
+        accounts.Save(prepared);
+        return Results.Ok(new { created = true });
+    } catch (ArgumentException e) { return Results.BadRequest(new { error = new { message = e.Message } }); }
+      catch (InvalidOperationException e) { return Results.Conflict(new { error = new { message = e.Message } }); }
+}).RequireAuthorization();
 app.MapPost("/api/auth/local-test", async (HttpContext context, MySqlStore store, CancellationToken ct) =>
 {
     if (!localPreviewEnabled || !IsLocalPreviewRequest(context, authSettings)) return Results.NotFound();
@@ -198,7 +244,7 @@ app.MapPost("/api/auth/local-test", async (HttpContext context, MySqlStore store
         new Claim("astra-csrf", Convert.ToHexString(RandomNumberGenerator.GetBytes(32)))
     }, CookieAuthenticationDefaults.AuthenticationScheme);
     await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity),
-        new AuthenticationProperties { IsPersistent = false, ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) });
+        AuthSessionPolicy.SignIn(AuthSessionPolicy.Lifetime(builder.Configuration)));
     return Results.Ok(new { authenticated = true });
 }).AllowAnonymous();
 app.MapGet("/api/auth/login", (string? returnTo, AuthSettings settings) =>
@@ -217,6 +263,7 @@ app.MapGet("/api/auth/me", async (HttpContext context, MySqlStore store, Cancell
     var workspaceOrigin = context.User.HasClaim("astra-local-preview", "true")
         ? new Uri(sessionBaseUrl) : new Uri($"{context.Request.Scheme}://{context.Request.Host}");
     var workspace = ResolveWorkspace(referer, workspaceOrigin.Scheme, workspaceOrigin.Authority, sessionBaseUrl);
+    // Missing workspace parameters use the normal role-based workspace.
     var user = await store.GetUserView(id, workspace, cancellationToken);
     if (user is null) return Results.Unauthorized();
     return Results.Ok(new { configured = true, authenticated = true, user, csrfToken = context.User.FindFirstValue("astra-csrf") });
@@ -245,7 +292,17 @@ app.MapGet("/api/tickets", async (HttpContext context, MySqlStore store, Cancell
     var scope = query["scope"].FirstOrDefault() ?? "my";
     var status = query["status"].FirstOrDefault();
     var search = query["q"].FirstOrDefault()?.Trim() ?? "";
-    if (scope is not ("my" or "team" or "all" or "internal" or "unassigned") || search.Length > 200 ||
+    if (scope != "review" && query["queue"] == "true" && status is null)
+    {
+        status = search.ToUpperInvariant() switch
+        {
+            "CLOSE" or "CLOSED" => "CLOSED",
+            "RESOLVED" => "RESOLVED",
+            _ => null
+        };
+        if (status is not null) search = "";
+    }
+    if (scope is not ("my" or "team" or "all" or "internal" or "unassigned" or "review") || search.Length > 200 ||
         (status is not null && status is not ("NEW" or "OPEN" or "IN_PROGRESS" or "WAITING_FOR_CLIENT" or "WAITING_FOR_VENDOR" or "ON_HOLD" or "RESOLVED" or "CLOSED" or "CANCELLED")))
         return Results.BadRequest(new { error = new { code = "INVALID_FILTER", message = "One or more ticket filters are invalid." } });
     var page = int.TryParse(query["page"], out var requestedPage) ? Math.Clamp(requestedPage, 1, 100000) : 1;
@@ -274,6 +331,14 @@ app.MapGet("/api/tickets/options", async (HttpContext context, MySqlStore store,
     if (userId is null) return Results.Unauthorized();
     var result = await store.GetTicketOptions(userId, cancellationToken);
     return result is null ? Results.Forbid() : Results.Ok(result);
+}).RequireAuthorization();
+
+app.MapGet("/api/tickets/assignees", async (Guid clientId, Guid? siteId, HttpContext context, MySqlStore store, CancellationToken ct) =>
+{
+    var userId = context.User.FindFirstValue("astra-user-id");
+    if (userId is null) return Results.Unauthorized();
+    var assignees = await store.GetTicketAssignees(userId, clientId.ToString("D"), siteId?.ToString("D"), ct);
+    return Results.Ok(await store.FilterOfficialTeamMembers(userId, assignees, ct));
 }).RequireAuthorization();
 
 app.MapGet("/api/tickets/views", async (HttpContext context, MySqlStore store, CancellationToken cancellationToken) =>
@@ -734,6 +799,7 @@ app.MapPost("/api/tickets", async (CreateTicketRequest body, HttpContext context
     if (userId is null) return Results.Unauthorized();
     try
     {
+        if (body.AssignedUserId is not null && !await store.IsOfficialTeamColleague(userId, body.AssignedUserId, cancellationToken)) return Results.Forbid();
         var created = await store.CreateTicket(userId, body, cancellationToken);
         return Results.Created($"/api/tickets/{created.Id}", created);
     }
@@ -759,6 +825,10 @@ app.MapPost("/api/tickets/{id}/comments", async (string id, CreateTicketCommentR
         var created = await store.CreateTicketComment(userId, id, body, cancellationToken);
         return created is null ? Results.NotFound() : Results.Created($"/api/tickets/{id}/comments/{created.Id}", created);
     }
+    catch (FeatureFailure exception)
+    {
+        return FeatureApis.Error(exception.Status, exception.Code, exception.Message);
+    }
     catch (UnauthorizedAccessException)
     {
         return Results.Forbid();
@@ -774,6 +844,7 @@ app.MapPost("/api/tickets/{id}/assign", async (string id, AssignTicketRequest bo
         return Results.BadRequest(new { error = new { code = "INVALID_ASSIGNMENT", message = "Select an active team member." } });
     try
     {
+        if (!await store.IsOfficialTeamColleague(userId, body.AssignedUserId, cancellationToken)) return Results.Forbid();
         var result = await store.AssignTicket(userId, id, body, cancellationToken);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
@@ -931,7 +1002,7 @@ static string ResolveWorkspace(string referer, string scheme, string requestHost
         .Any(prefix => path == prefix || path.StartsWith(prefix + "/", StringComparison.Ordinal)))
     {
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(source.Query);
-        var selected = query["workspace"].FirstOrDefault();
+        var selected = query.TryGetValue("workspace", out var values) ? values.FirstOrDefault() : null;
         if (selected is "admin" or "management" or "operations" or "client") return selected;
     }
     if (path.StartsWith("/admin", StringComparison.Ordinal)) return "admin";
@@ -985,7 +1056,7 @@ public sealed record AuthSettings(string ClientId, string ClientSecret, string T
     }
 }
 
-public sealed partial class MySqlStore(IConfiguration configuration, IMailTransport? mailTransport = null, IMailInbox? mailInbox = null, IIdentityDirectory? identityDirectory = null)
+public sealed partial class MySqlStore(IConfiguration configuration, IMailTransport? mailTransport = null, IMailInbox? mailInbox = null, IIdentityDirectory? identityDirectory = null, ILogger<MySqlStore>? logger = null)
 {
     public async Task<KnownAccount> EnsureLocalPreviewAccount(CancellationToken ct)
     {
@@ -1041,7 +1112,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         await using var connection=CreateConnection();await connection.OpenAsync(ct);
         var roleAllowed=false;
         const string roleSql="SELECT ur.role_code,rp.permissions FROM user_roles ur LEFT JOIN role_access_policies rp ON rp.role_code=ur.role_code WHERE ur.user_id=@id";
-        await using(var roles=new MySqlCommand(roleSql,connection)){roles.Parameters.AddWithValue("@id",userId);await using var roleReader=await roles.ExecuteReaderAsync(ct);while(await roleReader.ReadAsync(ct)){var role=roleReader.GetString(0);if(!roleReader.IsDBNull(1)){try{var permissions=System.Text.Json.JsonSerializer.Deserialize<string[]>(roleReader.GetString(1))??[];if(permissions.Contains(permission,StringComparer.Ordinal))roleAllowed=true;}catch(System.Text.Json.JsonException){}}else if(defaultRoles?.Contains(role)==true)roleAllowed=true;}}
+        await using(var roles=new MySqlCommand(roleSql,connection)){roles.Parameters.AddWithValue("@id",userId);await using var roleReader=await roles.ExecuteReaderAsync(ct);while(await roleReader.ReadAsync(ct)){var role=roleReader.GetString(0);if(role=="TEAM_LEAD"&&permission is ("AUDIT_VIEW" or "TICKETS_APPROVE"))roleAllowed=true;if(!roleReader.IsDBNull(1)){try{var permissions=System.Text.Json.JsonSerializer.Deserialize<string[]>(roleReader.GetString(1))??[];if(permissions.Contains(permission,StringComparer.Ordinal))roleAllowed=true;}catch(System.Text.Json.JsonException){}}else if(defaultRoles?.Contains(role)==true)roleAllowed=true;}}
         const string extraSql="SELECT EXISTS(SELECT 1 FROM user_permissions WHERE user_id=@id AND permission_code=@permission),EXISTS(SELECT 1 FROM user_access_policies WHERE user_id=@id AND JSON_CONTAINS(allow_permissions,JSON_QUOTE(@permission))),EXISTS(SELECT 1 FROM staff_group_members gm JOIN access_groups g ON g.id=gm.group_id AND g.kind='STAFF' AND g.active=1 WHERE gm.user_id=@id AND JSON_CONTAINS(g.permissions,JSON_QUOTE(@permission))),EXISTS(SELECT 1 FROM user_access_policies WHERE user_id=@id AND JSON_CONTAINS(deny_permissions,JSON_QUOTE(@permission)))";
         await using var command=new MySqlCommand(extraSql,connection);command.Parameters.AddWithValue("@id",userId);command.Parameters.AddWithValue("@permission",permission);await using var reader=await command.ExecuteReaderAsync(ct);if(!await reader.ReadAsync(ct))return false;var allowed=roleAllowed||reader.GetBoolean(0)||reader.GetBoolean(1)||reader.GetBoolean(2);return allowed&&!reader.GetBoolean(3);
     }
@@ -1065,10 +1136,11 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
     {
         if(ConnectionString is null)return null;if(!await IsAdministrator(actorId,ct))throw new UnauthorizedAccessException();var name=body.Name.Trim();var email=body.PrimaryEmail?.Trim();var phone=body.PrimaryPhone?.Trim();var notes=body.Notes?.Trim();
         if(name.Length is <1 or >200||(email?.Length??0)>320||(phone?.Length??0)>50||(notes?.Length??0)>4000)throw new ArgumentException("Enter valid client details.");
-        if(!string.IsNullOrEmpty(email)){try{_=new System.Net.Mail.MailAddress(email);}catch(FormatException){throw new ArgumentException("Enter a valid primary email address.");}}
+        email = RequireClientStaffDomain(email);
         var requested=body.TicketPrefix?.Trim().ToUpperInvariant();if(requested is not null&&!System.Text.RegularExpressions.Regex.IsMatch(requested,"^[A-Z][A-Z0-9]{1,7}$"))throw new ArgumentException("The client ticket prefix must be 2 to 8 uppercase letters or numbers.");
-        await using var connection=CreateConnection();await connection.OpenAsync(ct);await using var transaction=await connection.BeginTransactionAsync(ct);
+        await using var connection=CreateConnection();await connection.OpenAsync(ct);await using var transaction=await connection.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
         try{
+            await EnsureClientPrimaryEmailAvailable(connection, transaction, email, null, ct);
             var basePrefix=requested??new string(name.Where(char.IsLetterOrDigit).Take(3).ToArray()).ToUpperInvariant();if(basePrefix.Length==0)basePrefix="CLT";if(basePrefix.Length==1)basePrefix+="X";if(basePrefix.Length>6)basePrefix=basePrefix[..6];var prefix=basePrefix;
             if(requested is null){var suffix=2;while(true){await using var reserved=new MySqlCommand("SELECT 1 FROM ticket_prefix_registry WHERE prefix=@prefix",connection,transaction);reserved.Parameters.AddWithValue("@prefix",prefix);if(await reserved.ExecuteScalarAsync(ct)is null)break;prefix=basePrefix+suffix++.ToString(System.Globalization.CultureInfo.InvariantCulture);if(prefix.Length>8)throw new ArgumentException("Choose a shorter name or provide a ticket prefix.");}}
             var id=Guid.NewGuid().ToString("D");await using(var insert=new MySqlCommand("INSERT INTO clients(id,name,ticket_prefix,primary_email,primary_phone,notes,status) VALUES(@id,@name,@prefix,@email,@phone,@notes,'ACTIVE')",connection,transaction)){insert.Parameters.AddWithValue("@id",id);insert.Parameters.AddWithValue("@name",name);insert.Parameters.AddWithValue("@prefix",prefix);insert.Parameters.AddWithValue("@email",(object?)email??DBNull.Value);insert.Parameters.AddWithValue("@phone",(object?)phone??DBNull.Value);insert.Parameters.AddWithValue("@notes",(object?)notes??DBNull.Value);await insert.ExecuteNonQueryAsync(ct);}
@@ -1095,6 +1167,28 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         await using var connection=CreateConnection();await connection.OpenAsync(ct);await using var transaction=await connection.BeginTransactionAsync(ct);
         try{await using var client=new MySqlCommand("SELECT 1 FROM clients WHERE id=@id AND status='ACTIVE' FOR UPDATE",connection,transaction);client.Parameters.AddWithValue("@id",body.ClientId);if(await client.ExecuteScalarAsync(ct)is null)throw new ArgumentException("The selected client is unavailable.");
             var id=Guid.NewGuid().ToString("D");await using(var insert=new MySqlCommand("INSERT INTO sites(id,client_id,name,address,ticket_prefix,active) VALUES(@id,@client,@name,@address,@prefix,1)",connection,transaction)){insert.Parameters.AddWithValue("@id",id);insert.Parameters.AddWithValue("@client",body.ClientId);insert.Parameters.AddWithValue("@name",name);insert.Parameters.AddWithValue("@address",(object?)address??DBNull.Value);insert.Parameters.AddWithValue("@prefix",(object?)prefix??DBNull.Value);await insert.ExecuteNonQueryAsync(ct);}
+            if (!string.IsNullOrWhiteSpace(body.EmailDomain))
+            {
+                var domain = ValidateClientDomain(body.EmailDomain);
+                if ((await FRows(connection, transaction,
+                    "SELECT id FROM clients WHERE id=@client AND organization_type='CLIENT'",
+                    ct, ("client", body.ClientId))).Count == 0)
+                    throw new ArgumentException("Choose a customer organization for email domain routing.");
+
+                var domainId = Guid.NewGuid().ToString("D");
+                try
+                {
+                    await FExecute(connection, transaction,
+                        "INSERT INTO client_email_domains(id,client_id,site_id,domain,active) VALUES(@id,@client,@site,@domain,1)",
+                        ct, ("id", domainId), ("client", body.ClientId), ("site", id), ("domain", domain));
+                }
+                catch (MySqlException ex) when (ex.Number == 1062)
+                {
+                    throw new ArgumentException("This email domain is already configured.");
+                }
+                await AddAudit(connection, transaction, actorId, "CLIENT.PORTAL_DOMAIN_SAVED",
+                    "CLIENT_EMAIL_DOMAIN", domainId, new { domain, clientId = body.ClientId, siteId = id, active = true }, ct);
+            }
             await AddAudit(connection,transaction,actorId,"SITE.CREATED","SITE",id,new{clientId=body.ClientId});await transaction.CommitAsync(ct);return new CreatedEntity(id);
         }catch(MySqlException ex)when(ex.Number==1062){await transaction.RollbackAsync(ct);throw new ArgumentException("That site name or ticket prefix is already in use.");}catch{await transaction.RollbackAsync(ct);throw;}
     }
@@ -1169,7 +1263,8 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
     public async Task<List<Dictionary<string, object?>>?> ListSlaSettings(string userId, string kind, CancellationToken ct)
     {
         if (ConnectionString is null || kind is not ("policies" or "calendars")) return null;
-        if (!await IsAdministrator(userId, ct) && !await HasPermission(userId, "SLA_MANAGE", new HashSet<string>(["MANAGER", "ADMIN"], StringComparer.Ordinal), ct)) return null;
+        if (!await CanManageSla(userId, ct) &&
+            (await FQuery("SELECT user_id FROM user_roles WHERE user_id=@actor AND role_code='TEAM_LEAD'", ct, ("actor", userId))).Count == 0) return null;
         var sql = kind == "policies"
             ? "SELECT p.id,p.priority,p.response_minutes,p.resolution_minutes,p.warning_percent,p.active,p.calendar_id,c.name AS calendar_name,p.updated_at FROM sla_policies p JOIN sla_calendars c ON c.id=p.calendar_id ORDER BY CASE p.priority WHEN 'P1_CRITICAL' THEN 1 WHEN 'P2_HIGH' THEN 2 WHEN 'P3_MEDIUM' THEN 3 ELSE 4 END"
             : "SELECT c.id,c.name,c.timezone,c.working_days,c.work_start,c.work_end,c.active,(SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT('id',h.id,'date',DATE_FORMAT(h.holiday_date,'%Y-%m-%d'),'name',h.name)),JSON_ARRAY()) FROM sla_holidays h WHERE h.calendar_id=c.id) AS holidays FROM sla_calendars c ORDER BY c.name";
@@ -1381,22 +1476,32 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         await using var reader=await command.ExecuteReaderAsync(ct); var rows=new List<Dictionary<string,object?>>(); while(await reader.ReadAsync(ct)){var row=new Dictionary<string,object?>(StringComparer.Ordinal);for(var i=0;i<reader.FieldCount;i++)row[reader.GetName(i)]=ReadValue(reader,i);rows.Add(row);} return rows;
     }
 
-    public async Task<List<Dictionary<string, object?>>> ListUsers(CancellationToken ct)
+    public async Task<List<Dictionary<string, object?>>> ListUsers(CancellationToken ct, string? clientId = null)
     {
         if (ConnectionString is null) return [];
-        const string sql = "SELECT u.id,u.email,u.display_name,u.active,u.last_login_at,u.work_scope,u.change_access,u.supervisor_user_id,COALESCE((SELECT JSON_ARRAYAGG(ur.role_code) FROM user_roles ur WHERE ur.user_id=u.id),JSON_ARRAY()) AS roles,COALESCE((SELECT JSON_ARRAYAGG(cu.client_id) FROM client_users cu WHERE cu.user_id=u.id),JSON_ARRAY()) AS client_ids,COALESCE((SELECT JSON_ARRAYAGG(us.site_id) FROM user_sites us WHERE us.user_id=u.id),JSON_ARRAY()) AS site_ids,COALESCE((SELECT JSON_ARRAYAGG(up.permission_code) FROM user_permissions up WHERE up.user_id=u.id),JSON_ARRAY()) AS permissions,COALESCE((SELECT JSON_ARRAYAGG(du.department_id) FROM department_users du WHERE du.user_id=u.id),JSON_ARRAY()) AS department_ids,COALESCE((SELECT JSON_ARRAYAGG(du.department_id) FROM department_users du WHERE du.user_id=u.id AND du.is_lead=1),JSON_ARRAY()) AS lead_department_ids FROM users u ORDER BY u.display_name";
-        await using var connection=CreateConnection(); await connection.OpenAsync(ct); await using var command=new MySqlCommand(sql,connection); await using var reader=await command.ExecuteReaderAsync(ct); var rows=new List<Dictionary<string,object?>>();
-        while(await reader.ReadAsync(ct)){var row=new Dictionary<string,object?>(StringComparer.Ordinal);for(var i=0;i<reader.FieldCount;i++)row[reader.GetName(i)]=ReadValue(reader,i);rows.Add(row);} return rows;
+        const string sql = """
+            SELECT u.id,u.email,u.display_name,u.active,u.last_login_at,u.work_scope,u.change_access,u.supervisor_user_id,
+                   COALESCE((SELECT JSON_ARRAYAGG(ur.role_code) FROM user_roles ur WHERE ur.user_id=u.id),JSON_ARRAY()) AS roles,
+                   COALESCE((SELECT JSON_ARRAYAGG(cu.client_id) FROM client_users cu WHERE cu.user_id=u.id),JSON_ARRAY()) AS client_ids,
+                   COALESCE((SELECT JSON_ARRAYAGG(us.site_id) FROM user_sites us WHERE us.user_id=u.id),JSON_ARRAY()) AS site_ids,
+                   COALESCE((SELECT JSON_ARRAYAGG(up.permission_code) FROM user_permissions up WHERE up.user_id=u.id),JSON_ARRAY()) AS permissions,
+                   COALESCE((SELECT JSON_ARRAYAGG(du.department_id) FROM department_users du WHERE du.user_id=u.id),JSON_ARRAY()) AS department_ids,
+                   COALESCE((SELECT JSON_ARRAYAGG(du.department_id) FROM department_users du WHERE du.user_id=u.id AND du.is_lead=1),JSON_ARRAY()) AS lead_department_ids
+            FROM users u
+            WHERE @clientId IS NULL OR EXISTS (
+                SELECT 1 FROM client_users membership WHERE membership.user_id=u.id AND membership.client_id=@clientId
+            )
+            ORDER BY u.display_name
+            """;
+        var rows = await FQuery(sql, ct, ("clientId", clientId is null ? null : Guid.Parse(clientId).ToString("D")));
+        string[] arrayFields = ["roles", "client_ids", "site_ids", "permissions", "department_ids", "lead_department_ids"];
+        foreach (var row in rows)
+            foreach (var field in arrayFields)
+                row[field] = FStrings(row[field]);
+        return rows;
     }
 
-    public async Task<List<Dictionary<string, object?>>> ListAuditLogs(CancellationToken ct)
-    {
-        if (ConnectionString is null) return [];
-        await using var connection=CreateConnection(); await connection.OpenAsync(ct);
-        const string sql="SELECT id,actor_user_id,action,entity_type,entity_id,details,created_at FROM audit_logs ORDER BY created_at DESC,id DESC LIMIT 500";
-        await using var command=new MySqlCommand(sql,connection); await using var reader=await command.ExecuteReaderAsync(ct); var rows=new List<Dictionary<string,object?>>();
-        while(await reader.ReadAsync(ct)){var row=new Dictionary<string,object?>(StringComparer.Ordinal);for(var i=0;i<reader.FieldCount;i++)row[reader.GetName(i)]=ReadValue(reader,i);rows.Add(row);} return rows;
-    }
+    public Task<List<Dictionary<string, object?>>> ListAuditLogs(CancellationToken ct) => ReadAuditHistory(ct);
 
     public async Task<Dictionary<string, object?>?> GetAdminOverview(string userId, CancellationToken ct)
     {
@@ -1427,7 +1532,9 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             var defaults = DefaultRolePolicy(code);
             var available = AvailableRolePolicy(code);
             var current = code == "ADMIN" ? available : reader.IsDBNull(1) ? defaults : ParsePermissionArray(reader.GetString(1));
-            roles.Add(new { code, permissions = current, revision = reader.IsDBNull(2) ? 0 : reader.GetInt32(2), defaults, editable = code is "TECHNICIAN" or "TEAM_LEAD" or "MANAGER", available, users = reader.GetInt32(3) });
+            if (code == "TEAM_LEAD")
+                current = current.Union(["TICKETS_APPROVE", "AUDIT_VIEW"], StringComparer.Ordinal).ToArray();
+            roles.Add(new { code, permissions = current.Intersect(available, StringComparer.Ordinal).ToArray(), revision = reader.IsDBNull(2) ? 0 : reader.GetInt32(2), defaults, editable = code is "TECHNICIAN" or "TEAM_LEAD" or "MANAGER", available, users = reader.GetInt32(3) });
         }
         return new { roles };
     }
@@ -1455,6 +1562,11 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             await using var roleReader = await roleQuery.ExecuteReaderAsync(ct);
             while (await roleReader.ReadAsync(ct)) roles.Add(roleReader.GetString(0));
         }
+        if (!roles.Any(role => role is "TEAM_LEAD" or "MANAGER" or "ADMIN"))
+        {
+            allow = allow.Where(permission => permission != "TICKETS_ASSIGN").ToArray();
+            deny = deny.Where(permission => permission != "TICKETS_ASSIGN").ToArray();
+        }
         var groupPermissions = new HashSet<string>(StringComparer.Ordinal);
         await using (var groupQuery = new MySqlCommand("SELECT g.permissions FROM access_groups g JOIN staff_group_members gm ON gm.group_id=g.id WHERE gm.user_id=@id AND g.kind='STAFF' AND g.active=1", connection))
         {
@@ -1475,8 +1587,8 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
     private static readonly string[] StaffPolicyCodes = ["TICKETS_TEAM_VIEW","TICKETS_ASSIGN","TICKETS_APPROVE","CATEGORY_MANAGE","SLA_MANAGE","REPORTS_VIEW","TAGS_MANAGE"];
     private static string[] DefaultRolePolicy(string code) => code switch
     {
-        "TECHNICIAN" => ["TICKETS_TEAM_VIEW","TICKETS_ASSIGN"],
-        "TEAM_LEAD" => ["TICKETS_TEAM_VIEW","TICKETS_ASSIGN","CATEGORY_MANAGE","TAGS_MANAGE","REPORTS_VIEW"],
+        "TECHNICIAN" => ["TICKETS_TEAM_VIEW"],
+        "TEAM_LEAD" => ["TICKETS_TEAM_VIEW","TICKETS_ASSIGN","TICKETS_APPROVE","CATEGORY_MANAGE","TAGS_MANAGE","REPORTS_VIEW","AUDIT_VIEW"],
         "MANAGER" => ["TICKETS_TEAM_VIEW","TICKETS_ASSIGN","TICKETS_APPROVE","CATEGORY_MANAGE","TAGS_MANAGE","SLA_MANAGE","REPORTS_VIEW","AUDIT_VIEW"],
         "ADMIN" => PolicyPermissionCodes,
         _ => []
@@ -1485,7 +1597,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
     {
         "ADMIN" => PolicyPermissionCodes,
         "MANAGER" or "TEAM_LEAD" => [..StaffPolicyCodes,"AUDIT_VIEW"],
-        "TECHNICIAN" => StaffPolicyCodes,
+        "TECHNICIAN" => StaffPolicyCodes.Where(permission => permission != "TICKETS_ASSIGN").ToArray(),
         _ => []
     };
 
@@ -1679,7 +1791,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             for (var i = 0; i < reader.FieldCount; i++) row[reader.GetName(i)] = ReadValue(reader, i);
             rows.Add(row);
         }
-        return rows;
+        return await FilterOfficialTeamMembers(userId, rows, ct);
     }
 
     public async Task<CreatedEntity?> CreateDepartment(string actorId, DepartmentRequest body, CancellationToken ct)
@@ -1756,12 +1868,12 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (ConnectionString is null) return new { items = Array.Empty<object>(), canManage = false, isAdmin = false };
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        var (admin, manager, _, _) = await GetKnowledgeRoles(connection, userId, ct);
-        const string sql = "SELECT s.id,s.name,s.description,s.instructions,s.category_id,s.client_id,s.active,s.created_by_user_id,s.updated_at,c.name AS category_name FROM service_templates s JOIN categories c ON c.id=s.category_id WHERE (@admin OR s.client_id IS NULL OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@id AND cu.client_id=s.client_id)) AND (@manager OR s.active=1) ORDER BY s.name LIMIT 200";
+        var (admin, manager, _, _, canDraft) = await GetKnowledgeRoles(connection, userId, ct);
+        const string sql = "SELECT s.id,s.name,s.description,s.instructions,s.category_id,s.client_id,s.active,s.created_by_user_id,s.updated_at,c.name AS category_name,(@canDraft AND s.client_id IS NOT NULL AND s.created_by_user_id=@id AND s.active=0) AS can_edit_own_article FROM service_templates s JOIN categories c ON c.id=s.category_id WHERE (@admin OR s.client_id IS NULL OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@id AND cu.client_id=s.client_id)) AND (@manager OR s.active=1 OR (@canDraft AND s.client_id IS NOT NULL AND s.created_by_user_id=@id)) ORDER BY s.name LIMIT 200";
         await using var command = new MySqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@id", userId); command.Parameters.AddWithValue("@admin", admin); command.Parameters.AddWithValue("@manager", manager);
+        command.Parameters.AddWithValue("@id", userId); command.Parameters.AddWithValue("@admin", admin); command.Parameters.AddWithValue("@manager", manager); command.Parameters.AddWithValue("@canDraft", canDraft);
         var items = await ExecuteRows(command, ct);
-        return new { items, canManage = manager, isAdmin = admin };
+        return new { items, canManage = manager, canDraft, isAdmin = admin };
     }
 
     public async Task<object?> ListKnowledge(string userId, string search, int page, string? articleId, CancellationToken ct)
@@ -1769,31 +1881,34 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (ConnectionString is null) return null;
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        var (admin, manager, staff, customer) = await GetKnowledgeRoles(connection, userId, ct);
+        var (admin, manager, staff, customer, canDraft) = await GetKnowledgeRoles(connection, userId, ct);
         if (!staff && !customer) return null;
         const string source = " FROM knowledge_articles a JOIN users u ON u.id=a.author_user_id LEFT JOIN categories c ON c.id=a.category_id";
-        const string where = " WHERE (@admin OR a.client_id IS NULL OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@id AND cu.client_id=a.client_id)) AND (@manager OR (a.status='PUBLISHED' AND (@staff OR a.visibility='CLIENT'))) AND (@search='' OR a.title LIKE @pattern OR a.body LIKE @pattern) AND (@article IS NULL OR a.id=@article)";
+        const string ownArticle = "(@canDraft AND a.client_id IS NOT NULL AND a.author_user_id=@id AND a.status IN ('DRAFT','PUBLISHED') AND a.visibility='STAFF')";
+        const string ownDraft = "(" + ownArticle + " AND a.status='DRAFT')";
+        const string where = " WHERE (@admin OR a.client_id IS NULL OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@id AND cu.client_id=a.client_id)) AND (@manager OR (a.status='PUBLISHED' AND (@staff OR a.visibility='CLIENT')) OR " + ownDraft + ") AND (@search='' OR a.title LIKE @pattern OR a.body LIKE @pattern) AND (@article IS NULL OR a.id=@article)";
         await using var count = new MySqlCommand("SELECT COUNT(*)" + source + where, connection);
-        AddKnowledgeParameters(count, userId, admin, manager, staff, search, articleId);
+        AddKnowledgeParameters(count, userId, admin, manager, staff, canDraft, search, articleId);
         var total = Convert.ToInt32(await count.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture);
-        await using var query = new MySqlCommand("SELECT a.id,a.title,a.body,a.category_id,a.client_id,a.visibility,a.status,a.revision,a.updated_at,u.display_name AS author_name,c.name AS category_name" + source + where + " ORDER BY a.updated_at DESC LIMIT @take OFFSET @skip", connection);
-        AddKnowledgeParameters(query, userId, admin, manager, staff, search, articleId);
+        await using var query = new MySqlCommand("SELECT a.id,a.title,a.body,a.category_id,a.client_id,a.visibility,a.status,a.revision,a.updated_at,u.display_name AS author_name,c.name AS category_name," + ownArticle + " AS can_edit_own_article" + source + where + " ORDER BY a.updated_at DESC LIMIT @take OFFSET @skip", connection);
+        AddKnowledgeParameters(query, userId, admin, manager, staff, canDraft, search, articleId);
         query.Parameters.AddWithValue("@take", articleId is null ? 20 : 1); query.Parameters.AddWithValue("@skip", articleId is null ? (page - 1) * 20 : 0);
         var items = await ExecuteRows(query, ct);
-        return articleId is null ? new { total, items, canManage = manager, isAdmin = admin } : items.FirstOrDefault();
+        return articleId is null ? new { total, items, canManage = manager, canDraft, isAdmin = admin } : items.FirstOrDefault();
     }
 
-    private static async Task<(bool Admin, bool Manager, bool Staff, bool Customer)> GetKnowledgeRoles(MySqlConnection connection, string userId, CancellationToken ct)
+    private static async Task<(bool Admin, bool Manager, bool Staff, bool Customer, bool CanDraft)> GetKnowledgeRoles(MySqlConnection connection, string userId, CancellationToken ct)
     {
-        await using var command = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('MANAGER','ADMIN')),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN')),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='USER')", connection);
+        await using var command = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('TEAM_LEAD','MANAGER','ADMIN')),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN')),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='USER'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='TECHNICIAN')", connection);
         command.Parameters.AddWithValue("@id", userId);
         await using var reader = await command.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);
-        return (reader.GetBoolean(0), reader.GetBoolean(1), reader.GetBoolean(2), reader.GetBoolean(3));
+        return (reader.GetBoolean(0), reader.GetBoolean(1), reader.GetBoolean(2), reader.GetBoolean(3), reader.GetBoolean(4));
     }
 
-    private static void AddKnowledgeParameters(MySqlCommand command, string userId, bool admin, bool manager, bool staff, string search, string? articleId)
+    private static void AddKnowledgeParameters(MySqlCommand command, string userId, bool admin, bool manager, bool staff, bool canDraft, string search, string? articleId)
     {
+        command.Parameters.AddWithValue("@canDraft", canDraft);
         command.Parameters.AddWithValue("@id", userId); command.Parameters.AddWithValue("@admin", admin); command.Parameters.AddWithValue("@manager", manager); command.Parameters.AddWithValue("@staff", staff); command.Parameters.AddWithValue("@search", search); command.Parameters.AddWithValue("@pattern", $"%{search.Replace("%", "\\%").Replace("_", "\\_")}%"); command.Parameters.AddWithValue("@article", (object?)articleId ?? DBNull.Value);
     }
 
@@ -1820,17 +1935,20 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             throw new ArgumentException("Enter a valid template name, description, instructions, category, and client.");
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        if (!await CanManageKnowledgeScope(connection, actorId, body.ClientId, ct)) return null;
+        if (!await CanManageKnowledgeScope(connection, actorId, body.ClientId, ct, allowTechnicianAuthor: !body.Active)) return null;
         await using var transaction = await connection.BeginTransactionAsync(ct);
         try
         {
             if (id is not null)
             {
-                await using var existing = new MySqlCommand("SELECT client_id FROM service_templates WHERE id=@id FOR UPDATE", connection, transaction);
+                await using var existing = new MySqlCommand("SELECT client_id,created_by_user_id,active FROM service_templates WHERE id=@id FOR UPDATE", connection, transaction);
                 existing.Parameters.AddWithValue("@id", id);
-                var oldClient = await existing.ExecuteScalarAsync(ct);
-                if (oldClient is null) throw new KeyNotFoundException();
-                if (!await CanManageKnowledgeScope(connection, actorId, oldClient is DBNull ? null : Convert.ToString(oldClient, System.Globalization.CultureInfo.InvariantCulture), ct, transaction)) { await transaction.RollbackAsync(ct); return null; }
+                await using var reader = await existing.ExecuteReaderAsync(ct);
+                if (!await reader.ReadAsync(ct)) throw new KeyNotFoundException();
+                var oldClient = reader.IsDBNull(0) ? null : reader.GetString(0);
+                var ownDraft = !body.Active && reader.GetString(1) == actorId && !reader.GetBoolean(2);
+                await reader.DisposeAsync();
+                if (!await CanManageKnowledgeScope(connection, actorId, oldClient, ct, transaction, ownDraft)) { await transaction.RollbackAsync(ct); return null; }
             }
             await ValidateKnowledgeReferences(connection, transaction, body.CategoryId, body.ClientId, ct);
             var savedId = id ?? Guid.NewGuid().ToString("D");
@@ -1857,22 +1975,24 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (title.Length is < 3 or > 200 || articleBody.Length is < 10 or > 50000 || body.Visibility is not ("STAFF" or "CLIENT") || body.Status is not ("DRAFT" or "PUBLISHED" or "ARCHIVED") || (body.CategoryId is not null && !Guid.TryParse(body.CategoryId, out _)) || (body.ClientId is not null && !Guid.TryParse(body.ClientId, out _)))
             throw new ArgumentException("Enter a valid article title, body, visibility, status, category, and client.");
         if (id is not null && body.Revision is null or < 1) throw new ArgumentException("Reload the article before editing.");
+        var staffArticle = (body.Status is "DRAFT" or "PUBLISHED") && body.Visibility == "STAFF";
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        if (!await CanManageKnowledgeScope(connection, actorId, body.ClientId, ct)) return null;
+        if (!await CanManageKnowledgeScope(connection, actorId, body.ClientId, ct, allowTechnicianAuthor: staffArticle)) return null;
         await using var transaction = await connection.BeginTransactionAsync(ct);
         try
         {
             if (id is not null)
             {
-                await using var existing = new MySqlCommand("SELECT client_id,revision FROM knowledge_articles WHERE id=@id FOR UPDATE", connection, transaction);
+                await using var existing = new MySqlCommand("SELECT client_id,revision,author_user_id,status,visibility FROM knowledge_articles WHERE id=@id FOR UPDATE", connection, transaction);
                 existing.Parameters.AddWithValue("@id", id);
                 await using var reader = await existing.ExecuteReaderAsync(ct);
                 if (!await reader.ReadAsync(ct)) throw new KeyNotFoundException();
                 var oldClient = reader.IsDBNull(0) ? null : reader.GetString(0);
                 var revision = reader.GetInt32(1);
+                var ownStaffArticle = staffArticle && reader.GetString(2) == actorId && (reader.GetString(3) is "DRAFT" or "PUBLISHED") && reader.GetString(4) == "STAFF";
                 await reader.DisposeAsync();
-                if (!await CanManageKnowledgeScope(connection, actorId, oldClient, ct, transaction)) { await transaction.RollbackAsync(ct); return null; }
+                if (!await CanManageKnowledgeScope(connection, actorId, oldClient, ct, transaction, ownStaffArticle)) { await transaction.RollbackAsync(ct); return null; }
                 if (revision != body.Revision) throw new InvalidOperationException("Article changed since you opened it. Reload before saving.");
             }
             await ValidateKnowledgeReferences(connection, transaction, body.CategoryId, body.ClientId, ct);
@@ -1897,12 +2017,14 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (ConnectionString is null) return null;
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        var (_, _, staff, _) = await GetKnowledgeRoles(connection, actorId, ct);
+        var (_, manager, staff, _, _) = await GetKnowledgeRoles(connection, actorId, ct);
         if (!staff) return null;
         var article = await ListKnowledge(actorId, "", 1, articleId, ct);
         var ticket = await GetTicketDetail(actorId, ticketId, ct);
         if (article is null || ticket is null) return null;
-        var articleClient = System.Text.Json.JsonSerializer.SerializeToElement(article).GetProperty("client_id");
+        var articleRecord = System.Text.Json.JsonSerializer.SerializeToElement(article);
+        if (!manager && articleRecord.GetProperty("status").GetString() != "PUBLISHED") return null;
+        var articleClient = articleRecord.GetProperty("client_id");
         var ticketClient = System.Text.Json.JsonSerializer.SerializeToElement(ticket).GetProperty("ticket").GetProperty("client_id").GetString();
         if (articleClient.ValueKind != System.Text.Json.JsonValueKind.Null && articleClient.GetString() != ticketClient)
             throw new ArgumentException("The article belongs to another client.");
@@ -1921,9 +2043,10 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         catch { await transaction.RollbackAsync(ct); throw; }
     }
 
-    private static async Task<bool> CanManageKnowledgeScope(MySqlConnection connection, string userId, string? clientId, CancellationToken ct, MySqlTransaction? transaction = null)
+    private static async Task<bool> CanManageKnowledgeScope(MySqlConnection connection, string userId, string? clientId, CancellationToken ct, MySqlTransaction? transaction = null, bool allowTechnicianAuthor = false)
     {
-        await using var command = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='MANAGER'),EXISTS(SELECT 1 FROM client_users WHERE user_id=@id AND client_id=@client)", connection, transaction);
+        await using var command = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND (role_code IN ('TEAM_LEAD','MANAGER') OR (@allowTechnicianAuthor AND role_code='TECHNICIAN'))),EXISTS(SELECT 1 FROM client_users WHERE user_id=@id AND client_id=@client)", connection, transaction);
+        command.Parameters.AddWithValue("@allowTechnicianAuthor", allowTechnicianAuthor);
         command.Parameters.AddWithValue("@id", userId); command.Parameters.AddWithValue("@client", (object?)clientId ?? DBNull.Value);
         await using var reader = await command.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);
@@ -2006,8 +2129,11 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
                 if (!admin && hasSites && body.SiteId is null) throw new ArgumentException("Select a site within your access scope.");
             }
             var id = Guid.NewGuid().ToString("D");
-            await using (var insert = new MySqlCommand("INSERT INTO problems(id,client_id,site_id,title,description,priority,owner_user_id,created_by_user_id) VALUES(@id,@client,@site,@title,@description,@priority,@actor,@actor)", connection, transaction))
+            var number = await AllocateProblemNumber(connection, transaction, ct);
+            var problemNumber = "PRB-" + number.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
+            await using (var insert = new MySqlCommand("INSERT INTO problems(id,number,problem_number,client_id,site_id,title,description,priority,owner_user_id,created_by_user_id) VALUES(@id,@number,@problemNumber,@client,@site,@title,@description,@priority,@actor,@actor)", connection, transaction))
             {
+                insert.Parameters.AddWithValue("@number", number); insert.Parameters.AddWithValue("@problemNumber", problemNumber);
                 insert.Parameters.AddWithValue("@id", id); insert.Parameters.AddWithValue("@client", body.ClientId); insert.Parameters.AddWithValue("@site", (object?)body.SiteId ?? DBNull.Value); insert.Parameters.AddWithValue("@title", title); insert.Parameters.AddWithValue("@description", description); insert.Parameters.AddWithValue("@priority", body.Priority); insert.Parameters.AddWithValue("@actor", actorId);
                 await insert.ExecuteNonQueryAsync(ct);
             }
@@ -2146,6 +2272,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             command.Parameters.AddWithValue("@id", userId);
             changeAccess = Convert.ToString(await command.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture);
         }
+        changeAccess = EffectiveChangeAccess(changeAccess, roles.Contains("TECHNICIAN"), roles.Contains("TEAM_LEAD"));
         var reportViewer = admin || await HasPermission(userId, "REPORTS_VIEW", null, ct);
         using var document = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "help-topics.json"), ct));
         return document.RootElement.EnumerateArray().Where(topic =>
@@ -2169,15 +2296,50 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
     {
         var requiredPermission=resource switch{"clients"=>"CLIENTS_MANAGE","contacts"=>"CONTACTS_MANAGE","sites"=>"SITES_MANAGE","assets"=>"ASSETS_MANAGE","categories"=>"CATEGORY_MANAGE","tags"=>"TAGS_MANAGE","sources"=>"SOURCES_MANAGE","departments"=>"USERS_MANAGE","audit-logs"=>"AUDIT_VIEW",_=>null};
         var defaults=resource switch{"categories"=>new HashSet<string>(["TEAM_LEAD","MANAGER","ADMIN"],StringComparer.Ordinal),"clients" or "contacts" or "sites" or "assets" or "tags" or "sources" or "departments" or "audit-logs"=>new HashSet<string>(["ADMIN"],StringComparer.Ordinal),_=>null};
-        if(resource=="users") {if(!await IsAdministrator(userId,ct))return null;var users=await ListUsers(ct);var filtered=users.Where(item=>(status=="all"||(item.TryGetValue("active",out var active)&&Convert.ToBoolean(active,System.Globalization.CultureInfo.InvariantCulture)==(status=="active")))&&(string.IsNullOrEmpty(search)||System.Text.Json.JsonSerializer.Serialize(item).Contains(search,StringComparison.OrdinalIgnoreCase))&&(clientId is null||System.Text.Json.JsonSerializer.Serialize(item.TryGetValue("client_ids",out var ids)?ids:null).Contains(clientId,StringComparison.OrdinalIgnoreCase))).ToArray();return new{total=filtered.Length,page,pageSize,items=filtered.Skip((page-1)*pageSize).Take(pageSize).ToArray()};}
-        if(resource=="audit-logs") {if(!await IsAdministrator(userId,ct)&&!await HasPermission(userId,"AUDIT_VIEW",defaults,ct))return null;var logs=await ListAuditLogs(ct);var filtered=logs.Where(item=>(string.IsNullOrEmpty(search)||System.Text.Json.JsonSerializer.Serialize(item).Contains(search,StringComparison.OrdinalIgnoreCase))).ToArray();return new{total=filtered.Length,page,pageSize,items=filtered.Skip((page-1)*pageSize).Take(pageSize).ToArray()};}
+        if (resource == "users")
+        {
+            if (!await IsAdministrator(userId, ct)) return null;
+            const bool vendorDirectory = false;
+            var users = await ListUsers(ct, clientId);
+            if (clientId == "00000000-0000-4000-8000-000000000132")
+                users = users.Where(user => !((string[])user["client_ids"]!).Any(id => id != "00000000-0000-4000-8000-000000000132")).ToList();
+            static bool IsActive(Dictionary<string, object?> user) =>
+                Convert.ToBoolean(user.GetValueOrDefault("active"), System.Globalization.CultureInfo.InvariantCulture);
+            string[] staffRoles = ["TECHNICIAN", "TEAM_LEAD", "MANAGER", "INTERN", "ADMIN", "USER"];
+            bool IsStaff(Dictionary<string, object?> user) =>
+                ((string[])user["roles"]!).Intersect(staffRoles, StringComparer.OrdinalIgnoreCase).Any();
+            int? activeStaff = clientId is null ? null : users.Count(user => IsActive(user) && IsStaff(user));
+            var filtered = users.Where(user =>
+                (!vendorDirectory || IsStaff(user)) &&
+                (status == "all" || IsActive(user) == (status == "active")) &&
+                (string.IsNullOrEmpty(search) || System.Text.Json.JsonSerializer.Serialize(user).Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
+            return new { total = filtered.Length, page, pageSize, activeStaff, vendorDirectory,
+                items = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToArray() };
+        }
+        if (resource == "audit-logs")
+        {
+            var admin = await IsAdministrator(userId, ct);
+            if (!admin && !await HasPermission(userId, "AUDIT_VIEW", defaults, ct)) return null;
+            var teamLead = !admin &&
+                (await FQuery("SELECT user_id FROM user_roles WHERE user_id=@actor AND role_code='TEAM_LEAD'", ct, ("actor", userId))).Count != 0;
+            var logs = await ReadAuditHistory(ct, teamLead ? userId : null);
+            var filtered = logs.Where(item => string.IsNullOrEmpty(search) ||
+                System.Text.Json.JsonSerializer.Serialize(item).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+            return new { total = filtered.Length, page, pageSize, items = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToArray() };
+        }
         if(requiredPermission is null||ConnectionString is null)return null;
         if(!await IsAdministrator(userId,ct)&&!await HasPermission(userId,requiredPermission,defaults,ct))return null;
         var config=resource switch
         {
             "clients"=>("SELECT c.id,c.name,c.ticket_prefix,c.status,c.primary_email,c.primary_phone,c.notes,c.created_at,c.updated_at FROM clients c","CONCAT_WS(' ',r.name,r.ticket_prefix,r.status,r.primary_email,r.primary_phone,r.notes)","r.status='ACTIVE'","1=1","r.name,r.id"),
             "contacts"=>("SELECT x.id,x.client_id,x.site_id,x.user_id,x.name,x.email,x.phone,x.active,x.created_at,x.updated_at,c.name AS client_name FROM contacts x JOIN clients c ON c.id=x.client_id","CONCAT_WS(' ',r.name,r.email,r.phone,r.client_name)","r.active=1","r.client_id=@client","r.name,r.id"),
-            "sites"=>("SELECT x.id,x.client_id,x.name,x.address,x.active,x.created_at,x.updated_at,c.name AS client_name FROM sites x JOIN clients c ON c.id=x.client_id","CONCAT_WS(' ',r.name,r.address,r.client_name)","r.active=1","r.client_id=@client","r.name,r.id"),
+            "sites"=>("""
+                SELECT x.id,x.client_id,x.name,x.address,x.active,x.created_at,x.updated_at,
+                       x.ticket_prefix,c.name AS client_name,c.organization_type,c.status AS client_status,
+                       CAST(COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id',d.id,'domain',d.domain,'active',d.active))
+                         FROM client_email_domains d WHERE d.site_id=x.id AND d.client_id=x.client_id),JSON_ARRAY()) AS JSON) AS email_domains
+                FROM sites x JOIN clients c ON c.id=x.client_id
+                ""","CONCAT_WS(' ',r.name,r.address,r.client_name)","r.active=1","r.client_id=@client","r.name,r.id"),
             "assets"=>("SELECT x.id,x.client_id,x.site_id,x.name,x.asset_type,x.serial_number,x.external_reference,x.active,x.created_at,x.updated_at,c.name AS client_name FROM assets x JOIN clients c ON c.id=x.client_id","CONCAT_WS(' ',r.name,r.asset_type,r.serial_number,r.external_reference,r.client_name)","r.active=1","r.client_id=@client","r.name,r.id"),
             "categories"=>("SELECT id,parent_id,name,description,active,created_at,updated_at FROM categories","CONCAT_WS(' ',r.name,r.description)","r.active=1","1=1","r.name,r.id"),
             "tags"=>("SELECT id,name,description,active,created_at,updated_at FROM tags","CONCAT_WS(' ',r.name,r.description)","r.active=1","1=1","r.name,r.id"),
@@ -2216,6 +2378,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         var all = requestedAll && (isWide || canTeam);
         var assignment = all ? "1=1" : "t.assigned_user_id=@id";
         var access = isAdmin ? "1=1" : "(t.client_id IN (SELECT client_id FROM client_users WHERE user_id=@id) OR t.client_id='00000000-0000-4000-8000-000000000132' OR t.site_id IN (SELECT site_id FROM user_sites WHERE user_id=@id))";
+        access = $"({access}) AND {InternalTicketVisibility("t", "@id")}";
         var filter = $"({assignment}) AND ({access})";
         var countsSql = $"""
             SELECT SUM(CASE WHEN t.status NOT IN ('RESOLVED','CLOSED','CANCELLED') THEN 1 ELSE 0 END) AS open,
@@ -2227,6 +2390,12 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
                    SUM(CASE WHEN t.assigned_user_id IS NULL AND t.status NOT IN ('RESOLVED','CLOSED','CANCELLED') THEN 1 ELSE 0 END) AS unassigned,
                    SUM(CASE WHEN t.status NOT IN ('RESOLVED','CLOSED','CANCELLED') AND sla.paused_at IS NULL AND UTC_TIMESTAMP(6)>=sla.resolution_warning_at AND UTC_TIMESTAMP(6)<sla.resolution_due_at THEN 1 ELSE 0 END) AS sla_at_risk,
                    SUM(CASE WHEN t.status NOT IN ('RESOLVED','CLOSED','CANCELLED') AND sla.paused_at IS NULL AND UTC_TIMESTAMP(6)>=sla.resolution_due_at THEN 1 ELSE 0 END) AS sla_breached,
+                   SUM(CASE WHEN t.status='WAITING_FOR_CLIENT' THEN 1 ELSE 0 END) AS waiting_for_client,
+                   SUM(CASE WHEN t.status='WAITING_FOR_VENDOR' THEN 1 ELSE 0 END) AS waiting_for_vendor,
+                   SUM(CASE WHEN t.status='ON_HOLD' THEN 1 ELSE 0 END) AS on_hold,
+                   SUM(CASE WHEN t.status='RESOLVED' THEN 1 ELSE 0 END) AS resolved,
+                   SUM(CASE WHEN t.status='CLOSED' THEN 1 ELSE 0 END) AS closed,
+                   SUM(CASE WHEN t.status='CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
                    0 AS unattended
             FROM tickets t LEFT JOIN ticket_sla sla ON sla.ticket_id=t.id WHERE {filter}
             """;
@@ -2396,7 +2565,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             var internalClient = body.ClientId == "00000000-0000-4000-8000-000000000132";
             if (body.SiteId is not null && !admin && hasSites && !hasSite) throw new UnauthorizedAccessException();
             if (internalClient && workScope is not ("INTERNAL" or "BOTH" or "ALL") && !admin) throw new UnauthorizedAccessException();
-            await using (var valid = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM clients WHERE id=@client AND status='ACTIVE'),EXISTS(SELECT 1 FROM contacts WHERE id=@requester AND client_id=@client AND active),EXISTS(SELECT 1 FROM categories WHERE id=@category AND active),EXISTS(SELECT 1 FROM ticket_sources WHERE code=@source AND active),IF(@site IS NULL,1,EXISTS(SELECT 1 FROM sites WHERE id=@site AND client_id=@client AND active)),IF(@department IS NULL,1,EXISTS(SELECT 1 FROM departments WHERE id=@department AND active))", connection, transaction))
+            await using (var valid = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM clients WHERE id=@client AND status='ACTIVE'),EXISTS(SELECT 1 FROM contacts WHERE id=@requester AND client_id=@client AND active AND (@site IS NULL OR site_id=@site)),EXISTS(SELECT 1 FROM categories WHERE id=@category AND active),EXISTS(SELECT 1 FROM ticket_sources WHERE code=@source AND active),IF(@site IS NULL,1,EXISTS(SELECT 1 FROM sites WHERE id=@site AND client_id=@client AND active)),IF(@department IS NULL,1,EXISTS(SELECT 1 FROM departments WHERE id=@department AND active))", connection, transaction))
             {
                 valid.Parameters.AddWithValue("@client", body.ClientId); valid.Parameters.AddWithValue("@requester", body.RequesterId); valid.Parameters.AddWithValue("@category", body.CategoryId); valid.Parameters.AddWithValue("@source", body.Source); valid.Parameters.AddWithValue("@site", (object?)body.SiteId ?? DBNull.Value); valid.Parameters.AddWithValue("@department", (object?)body.DepartmentId ?? DBNull.Value);
                 await using var vr = await valid.ExecuteReaderAsync(ct); await vr.ReadAsync(ct);
@@ -2410,9 +2579,10 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             }
             if (body.AssignedUserId is not null)
             {
-                await using var assignee = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles ur JOIN users u ON u.id=ur.user_id WHERE ur.user_id=@assignee AND u.active AND ur.role_code IN ('TECHNICIAN','INTERN','TEAM_LEAD','MANAGER','ADMIN') AND (ur.role_code='ADMIN' OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=ur.user_id AND cu.client_id=@client)))", connection, transaction);
-                assignee.Parameters.AddWithValue("@assignee", body.AssignedUserId); assignee.Parameters.AddWithValue("@client", body.ClientId);
-                if (Convert.ToInt32(await assignee.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture) != 1) throw new ArgumentException("The assigned person is not active service-desk staff for this client.");
+                var assignmentAccess = await GetTicketAssignmentAccess(connection, transaction, userId, ct);
+                if (!assignmentAccess.CanAssign) throw new UnauthorizedAccessException();
+                if (!await IsTicketAssigneeEligible(connection, transaction, body.AssignedUserId, body.ClientId, body.SiteId, admin, ct))
+                    throw new ArgumentException("That team member cannot access this client or site.");
             }
             var ticketNumber = await AllocateTicketNumber(connection, transaction, body.ClientId, body.SiteId, ct);
             var id = Guid.NewGuid().ToString("D");
@@ -2441,7 +2611,12 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
                 sla.Parameters.AddWithValue("@ticket", id); sla.Parameters.AddWithValue("@policy", calendar.PolicyId); sla.Parameters.AddWithValue("@calendar", calendar.Id); sla.Parameters.AddWithValue("@priority", body.Priority); sla.Parameters.AddWithValue("@rw", responseWarning); sla.Parameters.AddWithValue("@rd", responseDue); sla.Parameters.AddWithValue("@sw", resolutionWarning); sla.Parameters.AddWithValue("@sd", resolutionDue); await sla.ExecuteNonQueryAsync(ct);
             }
             await using (var history = new MySqlCommand("INSERT INTO ticket_history(ticket_id,actor_user_id,action,new_value) VALUES(@ticket,@actor,'TICKET.CREATED',CAST(@value AS JSON))", connection, transaction)) { history.Parameters.AddWithValue("@ticket", id); history.Parameters.AddWithValue("@actor", userId); history.Parameters.AddWithValue("@value", System.Text.Json.JsonSerializer.Serialize(new { ticketNumber, source = body.Source })); await history.ExecuteNonQueryAsync(ct); }
-            await using (var audit = new MySqlCommand("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES(@actor,'TICKET.CREATED','TICKET',@ticket,CAST(@details AS JSON))", connection, transaction)) { audit.Parameters.AddWithValue("@actor", userId); audit.Parameters.AddWithValue("@ticket", id); audit.Parameters.AddWithValue("@details", System.Text.Json.JsonSerializer.Serialize(new { ticketNumber, clientId = body.ClientId })); await audit.ExecuteNonQueryAsync(ct); }
+            await AddAudit(connection, transaction, userId, "TICKET.CREATED", "TICKET", id, new
+            {
+                ticketNumber, subject, clientId = body.ClientId, siteId = body.SiteId,
+                categoryId = body.CategoryId, source = body.Source, priority = body.Priority,
+                assignedUserId = body.AssignedUserId, tagIds
+            }, ct);
             await QueueTicketEvent(connection,transaction,userId,id,null,"Ticket created",ct);
             await transaction.CommitAsync(ct);
             return new CreatedTicket(id, ticketNumber);
@@ -2467,8 +2642,22 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             await reader.DisposeAsync();
             if (isIntern && body.Type == "PUBLIC") throw new UnauthorizedAccessException();
 
-            var commentId = Guid.NewGuid().ToString("D");
             var commentBody = body.Body.Trim();
+            if (body.Type == "PUBLIC")
+            {
+                var ticket = (await FRows(connection, transaction,
+                    "SELECT subject,description FROM tickets WHERE id=@ticket", ct, ("ticket", ticketId))).FirstOrDefault();
+                if (ticket is null) return null;
+                var publicReplies = await FRows(connection, transaction, """
+                    SELECT LEFT(body,2000) AS body FROM ticket_comments
+                    WHERE ticket_id=@ticket AND comment_type='PUBLIC'
+                    ORDER BY created_at DESC,id DESC LIMIT 6
+                    """, ct, ("ticket", ticketId));
+                var context = new[] { ticket["subject"] as string ?? "", ticket["description"] as string ?? "" }
+                    .Concat(publicReplies.Select(reply => reply["body"] as string ?? ""));
+                PublicTicketReplyPolicy.Validate(commentBody, context);
+            }
+            var commentId = Guid.NewGuid().ToString("D");
             await using (var insert = new MySqlCommand("INSERT INTO ticket_comments(id,ticket_id,author_user_id,comment_type,body) VALUES(@id,@ticket,@actor,@type,@body)", connection, transaction))
             {
                 insert.Parameters.AddWithValue("@id", commentId); insert.Parameters.AddWithValue("@ticket", ticketId); insert.Parameters.AddWithValue("@actor", userId); insert.Parameters.AddWithValue("@type", body.Type); insert.Parameters.AddWithValue("@body", commentBody); await insert.ExecuteNonQueryAsync(ct);
@@ -2487,6 +2676,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             var metadata = System.Text.Json.JsonSerializer.Serialize(new { commentId });
             await using (var history = new MySqlCommand("INSERT INTO ticket_history(ticket_id,actor_user_id,action,new_value) VALUES(@ticket,@actor,@action,CAST(@value AS JSON))", connection, transaction)) { history.Parameters.AddWithValue("@ticket", ticketId); history.Parameters.AddWithValue("@actor", userId); history.Parameters.AddWithValue("@action", action); history.Parameters.AddWithValue("@value", metadata); await history.ExecuteNonQueryAsync(ct); }
             await using (var audit = new MySqlCommand("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES(@actor,@action,'TICKET',@ticket,CAST(@details AS JSON))", connection, transaction)) { audit.Parameters.AddWithValue("@actor", userId); audit.Parameters.AddWithValue("@action", action); audit.Parameters.AddWithValue("@ticket", ticketId); audit.Parameters.AddWithValue("@details", metadata); await audit.ExecuteNonQueryAsync(ct); }
+            if(body.Type=="INTERNAL")await QueueTicketInAppEvent(connection,transaction,userId,ticketId,commentId,"Internal note added",ct);
             if(body.Type=="PUBLIC")await QueueTicketEvent(connection,transaction,userId,ticketId,commentId,"Public reply added",ct);
             await transaction.CommitAsync(ct);
             return new CreatedTicketComment(commentId, body.Type, commentBody);
@@ -2494,38 +2684,61 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         catch { await transaction.RollbackAsync(ct); throw; }
     }
 
+    private static async Task<(bool CanAssign, bool IsAdmin)> GetTicketAssignmentAccess(
+        MySqlConnection connection, MySqlTransaction transaction, string userId, CancellationToken ct)
+    {
+        await using var command = FCommand(connection, transaction, """
+            SELECT EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code='ADMIN'),
+                   EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_code IN ('TEAM_LEAD','MANAGER')),
+                   (EXISTS(SELECT 1 FROM user_roles r LEFT JOIN role_access_policies rp ON rp.role_code=r.role_code
+                           WHERE r.user_id=u.id AND r.role_code IN ('TEAM_LEAD','MANAGER')
+                             AND (rp.role_code IS NULL OR JSON_CONTAINS(rp.permissions,JSON_QUOTE('TICKETS_ASSIGN'))))
+                    OR EXISTS(SELECT 1 FROM user_permissions p WHERE p.user_id=u.id AND p.permission_code='TICKETS_ASSIGN')
+                    OR EXISTS(SELECT 1 FROM staff_group_members gm JOIN access_groups g ON g.id=gm.group_id
+                              WHERE gm.user_id=u.id AND g.active=1 AND g.kind='STAFF' AND JSON_CONTAINS(g.permissions,JSON_QUOTE('TICKETS_ASSIGN')))
+                    OR COALESCE(JSON_CONTAINS(p.allow_permissions,JSON_QUOTE('TICKETS_ASSIGN')),0)),
+                   COALESCE(JSON_CONTAINS(p.deny_permissions,JSON_QUOTE('TICKETS_ASSIGN')),0)
+            FROM users u LEFT JOIN user_access_policies p ON p.user_id=u.id
+            WHERE u.id=@actor AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6))
+            """, ("actor", userId));
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return (false, false);
+        var admin = reader.GetBoolean(0);
+        return (admin || (reader.GetBoolean(1) && reader.GetBoolean(2) && !reader.GetBoolean(3)), admin);
+    }
+
     public async Task<AssignedTicket?> AssignTicket(string userId, string ticketId, AssignTicketRequest body, CancellationToken ct)
     {
         if (ConnectionString is null) return null;
-        if (await GetTicketDetail(userId, ticketId, ct) is null) return null;
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
         try
         {
-            await using var grants = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN')),EXISTS(SELECT 1 FROM user_permissions WHERE user_id=@id AND permission_code='TICKETS_ASSIGN'),(EXISTS(SELECT 1 FROM user_roles ur LEFT JOIN role_access_policies rp ON rp.role_code=ur.role_code WHERE ur.user_id=@id AND ur.role_code IN ('TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN') AND (rp.role_code IS NULL OR JSON_CONTAINS(rp.permissions,JSON_QUOTE('TICKETS_ASSIGN')))) OR EXISTS(SELECT 1 FROM staff_group_members gm JOIN access_groups g ON g.id=gm.group_id WHERE gm.user_id=@id AND g.active=1 AND g.kind='STAFF' AND JSON_CONTAINS(g.permissions,JSON_QUOTE('TICKETS_ASSIGN')))),EXISTS(SELECT 1 FROM user_access_policies p WHERE p.user_id=@id AND JSON_CONTAINS(p.allow_permissions,JSON_QUOTE('TICKETS_ASSIGN'))),EXISTS(SELECT 1 FROM user_access_policies p WHERE p.user_id=@id AND JSON_CONTAINS(p.deny_permissions,JSON_QUOTE('TICKETS_ASSIGN'))) ", connection, transaction);
-            grants.Parameters.AddWithValue("@id", userId);
-            await using var grantReader = await grants.ExecuteReaderAsync(ct);
-            if (!await grantReader.ReadAsync(ct) || !grantReader.GetBoolean(1)) throw new UnauthorizedAccessException();
-            var isAdmin = grantReader.GetBoolean(0);
-            var canAssign = isAdmin || (grantReader.GetBoolean(2) || grantReader.GetBoolean(3) || grantReader.GetBoolean(4)) && !grantReader.GetBoolean(5);
-            await grantReader.DisposeAsync();
+            var (canAssign, isAdmin) = await GetTicketAssignmentAccess(connection, transaction, userId, ct);
             if (!canAssign) throw new UnauthorizedAccessException();
-            await using var ticket = new MySqlCommand("SELECT client_id,site_id,assigned_user_id,ticket_number,subject FROM tickets WHERE id=@ticket FOR UPDATE", connection, transaction);
-            ticket.Parameters.AddWithValue("@ticket", ticketId);
+            await using var ticket = FCommand(connection, transaction,
+                $"SELECT t.client_id,t.site_id,t.assigned_user_id,t.ticket_number,t.subject FROM tickets t WHERE t.id=@ticket AND {FScope("t")} FOR UPDATE",
+                ("ticket", ticketId), ("actor", userId), ("admin", isAdmin));
             await using var ticketReader = await ticket.ExecuteReaderAsync(ct);
             if (!await ticketReader.ReadAsync(ct)) return null;
             var clientId = ticketReader.GetString(0); var siteId = ticketReader.IsDBNull(1) ? null : ticketReader.GetString(1); var previousId = ticketReader.IsDBNull(2) ? null : ticketReader.GetString(2);
+            var ticketNumber = ticketReader.GetString(3);
             await ticketReader.DisposeAsync();
-            await using var target = new MySqlCommand("SELECT EXISTS(SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.id=@target AND u.active AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6)) AND r.role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN') AND (r.role_code='ADMIN' OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=u.id AND cu.client_id=@client)) AND (@site IS NULL OR r.role_code='ADMIN' OR NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id AND us.site_id=@site)))", connection, transaction);
-            target.Parameters.AddWithValue("@target", body.AssignedUserId); target.Parameters.AddWithValue("@client", clientId); target.Parameters.AddWithValue("@site", (object?)siteId ?? DBNull.Value);
-            if (Convert.ToInt32(await target.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture) != 1) throw new ArgumentException("That team member cannot access this client or site.");
+            if (!await IsTicketAssigneeEligible(connection, transaction, body.AssignedUserId, clientId, siteId, isAdmin, ct))
+                throw new ArgumentException("That team member cannot access this client or site.");
             if (previousId == body.AssignedUserId) { await transaction.CommitAsync(ct); return new AssignedTicket(ticketId, body.AssignedUserId); }
             var reason = string.IsNullOrWhiteSpace(body.Reason) ? "Assigned by service desk" : body.Reason.Trim();
             await using (var update = new MySqlCommand("UPDATE tickets SET assigned_user_id=@target,updated_at=UTC_TIMESTAMP(6) WHERE id=@ticket", connection, transaction)) { update.Parameters.AddWithValue("@target", body.AssignedUserId); update.Parameters.AddWithValue("@ticket", ticketId); await update.ExecuteNonQueryAsync(ct); }
             await using (var history = new MySqlCommand("INSERT INTO ticket_history(ticket_id,actor_user_id,action,previous_value,new_value,reason) VALUES(@ticket,@actor,'TICKET.ASSIGNED',CAST(@previous AS JSON),CAST(@next AS JSON),@reason)", connection, transaction)) { history.Parameters.AddWithValue("@ticket", ticketId); history.Parameters.AddWithValue("@actor", userId); history.Parameters.AddWithValue("@previous", previousId is null ? "null" : System.Text.Json.JsonSerializer.Serialize(previousId)); history.Parameters.AddWithValue("@next", System.Text.Json.JsonSerializer.Serialize(body.AssignedUserId)); history.Parameters.AddWithValue("@reason", reason); await history.ExecuteNonQueryAsync(ct); }
             await using (var assignment = new MySqlCommand("INSERT INTO ticket_assignments(ticket_id,assigned_user_id,actor_user_id,reason) VALUES(@ticket,@target,@actor,@reason)", connection, transaction)) { assignment.Parameters.AddWithValue("@ticket", ticketId); assignment.Parameters.AddWithValue("@target", body.AssignedUserId); assignment.Parameters.AddWithValue("@actor", userId); assignment.Parameters.AddWithValue("@reason", reason); await assignment.ExecuteNonQueryAsync(ct); }
-            await using (var audit = new MySqlCommand("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES(@actor,'TICKET.ASSIGNED','TICKET',@ticket,CAST(@details AS JSON))", connection, transaction)) { audit.Parameters.AddWithValue("@actor", userId); audit.Parameters.AddWithValue("@ticket", ticketId); audit.Parameters.AddWithValue("@details", System.Text.Json.JsonSerializer.Serialize(new { assignedUserId = body.AssignedUserId, reason })); await audit.ExecuteNonQueryAsync(ct); }
+            await AddAudit(connection, transaction, userId, "TICKET.ASSIGNED", "TICKET", ticketId, new
+            {
+                ticketNumber,
+                before = new { assignedUserId = previousId },
+                after = new { assignedUserId = body.AssignedUserId },
+                reason
+            }, ct);
             await QueueTicketEvent(connection,transaction,userId,ticketId,null,"Ticket assigned",ct);
             await transaction.CommitAsync(ct);
             return new AssignedTicket(ticketId, body.AssignedUserId);
@@ -2541,23 +2754,27 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         await using var transaction = await connection.BeginTransactionAsync(ct);
         try
         {
-            await using var ticket = new MySqlCommand("SELECT t.client_id,t.site_id,t.assigned_user_id,t.status,EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN'),EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code IN ('TECHNICIAN','TEAM_LEAD','ADMIN')) FROM tickets t WHERE t.id=@ticket AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=@id AND cu.client_id=t.client_id)) FOR UPDATE", connection, transaction);
-            ticket.Parameters.AddWithValue("@id", userId); ticket.Parameters.AddWithValue("@ticket", ticketId);
+            var (canClaim, isAdmin) = await GetTicketAssignmentAccess(connection, transaction, userId, ct);
+            if (!canClaim) throw new UnauthorizedAccessException();
+            await using var ticket = FCommand(connection, transaction,
+                $"SELECT t.assigned_user_id,t.status FROM tickets t WHERE t.id=@ticket AND {FScope("t")} FOR UPDATE",
+                ("ticket", ticketId), ("actor", userId), ("admin", isAdmin));
             await using var reader = await ticket.ExecuteReaderAsync(ct);
             if (!await reader.ReadAsync(ct)) return null;
-            var clientId = reader.GetString(0); var siteId = reader.IsDBNull(1) ? null : reader.GetString(1); var assignedId = reader.IsDBNull(2) ? null : reader.GetString(2); var status = reader.GetString(3); var isAdmin = reader.GetBoolean(4); var canClaim = reader.GetBoolean(5);
+            var assignedId = reader.IsDBNull(0) ? null : reader.GetString(0);
+            var status = reader.GetString(1);
             await reader.DisposeAsync();
-            if (!canClaim) throw new UnauthorizedAccessException();
             if (assignedId is not null) throw new InvalidOperationException("Ticket is already assigned.");
-            await using var target = new MySqlCommand("SELECT 1 FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.id=@id AND u.active=1 AND (u.access_expires_at IS NULL OR u.access_expires_at>UTC_TIMESTAMP(6)) AND r.role_code IN ('TECHNICIAN','TEAM_LEAD','ADMIN') AND (r.role_code='ADMIN' OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.user_id=u.id AND cu.client_id=@client)) AND (@site IS NULL OR r.role_code='ADMIN' OR NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=u.id AND us.site_id=@site))", connection, transaction);
-            target.Parameters.AddWithValue("@id", userId); target.Parameters.AddWithValue("@client", clientId); target.Parameters.AddWithValue("@site", (object?)siteId ?? DBNull.Value);
-            if (await target.ExecuteScalarAsync(ct) is null) throw new UnauthorizedAccessException();
             var nextStatus = status == "NEW" ? "OPEN" : status;
             await using (var update = new MySqlCommand("UPDATE tickets SET assigned_user_id=@actor,status=@status,updated_at=UTC_TIMESTAMP(6) WHERE id=@ticket", connection, transaction)) { update.Parameters.AddWithValue("@actor", userId); update.Parameters.AddWithValue("@status", nextStatus); update.Parameters.AddWithValue("@ticket", ticketId); await update.ExecuteNonQueryAsync(ct); }
             await using (var assignment = new MySqlCommand("INSERT INTO ticket_assignments(ticket_id,assigned_user_id,actor_user_id,reason) VALUES(@ticket,@actor,@actor,'Claimed by technician')", connection, transaction)) { assignment.Parameters.AddWithValue("@ticket", ticketId); assignment.Parameters.AddWithValue("@actor", userId); await assignment.ExecuteNonQueryAsync(ct); }
             await using (var history = new MySqlCommand("INSERT INTO ticket_history(ticket_id,actor_user_id,action,previous_value,new_value,reason) VALUES(@ticket,@actor,'TICKET.ASSIGNED',CAST('null' AS JSON),CAST(@value AS JSON),'Claimed by technician')", connection, transaction)) { history.Parameters.AddWithValue("@ticket", ticketId); history.Parameters.AddWithValue("@actor", userId); history.Parameters.AddWithValue("@value", System.Text.Json.JsonSerializer.Serialize(userId)); await history.ExecuteNonQueryAsync(ct); }
-            var details = System.Text.Json.JsonSerializer.Serialize(new { assignedUserId = userId, reason = "Claimed by technician" });
-            await using (var audit = new MySqlCommand("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES(@actor,'TICKET.ASSIGNED','TICKET',@ticket,CAST(@details AS JSON))", connection, transaction)) { audit.Parameters.AddWithValue("@actor", userId); audit.Parameters.AddWithValue("@ticket", ticketId); audit.Parameters.AddWithValue("@details", details); await audit.ExecuteNonQueryAsync(ct); }
+            await AddAudit(connection, transaction, userId, "TICKET.ASSIGNED", "TICKET", ticketId, new
+            {
+                before = new { assignedUserId = (string?)null, status },
+                after = new { assignedUserId = userId, status = nextStatus },
+                reason = "Claimed by technician"
+            }, ct);
             await QueueTicketEvent(connection,transaction,userId,ticketId,null,"Ticket claimed",ct);
             await transaction.CommitAsync(ct);
             return new AssignedTicket(ticketId, userId);
@@ -2659,15 +2876,13 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         await using var transaction = await connection.BeginTransactionAsync(ct);
         try
         {
-            const string permissionSql = "SELECT EXISTS(SELECT 1 FROM user_roles ur LEFT JOIN role_access_policies rp ON rp.role_code=ur.role_code WHERE ur.user_id=@id AND ur.role_code IN ('TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN') AND (rp.role_code IS NULL OR JSON_CONTAINS(rp.permissions,JSON_QUOTE('TICKETS_APPROVE')))),EXISTS(SELECT 1 FROM user_permissions WHERE user_id=@id AND permission_code='TICKETS_APPROVE'),EXISTS(SELECT 1 FROM user_access_policies WHERE user_id=@id AND JSON_CONTAINS(allow_permissions,JSON_QUOTE('TICKETS_APPROVE'))),EXISTS(SELECT 1 FROM user_access_policies WHERE user_id=@id AND JSON_CONTAINS(deny_permissions,JSON_QUOTE('TICKETS_APPROVE'))),EXISTS(SELECT 1 FROM staff_group_members gm JOIN access_groups g ON g.id=gm.group_id WHERE gm.user_id=@id AND g.active=1 AND g.kind='STAFF' AND JSON_CONTAINS(g.permissions,JSON_QUOTE('TICKETS_APPROVE')))";
-            await using (var permission = new MySqlCommand(permissionSql, connection, transaction))
-            {
-                permission.Parameters.AddWithValue("@id", userId);
-                await using var reader = await permission.ExecuteReaderAsync(ct);
-                if (!await reader.ReadAsync(ct) || !(reader.GetBoolean(0) || reader.GetBoolean(1) || reader.GetBoolean(2) || reader.GetBoolean(4)) || reader.GetBoolean(3)) throw new UnauthorizedAccessException();
-            }
-            await using var pending = new MySqlCommand("SELECT id FROM ticket_approvals WHERE ticket_id=@ticket AND status='PENDING' FOR UPDATE", connection, transaction);
-            pending.Parameters.AddWithValue("@ticket", ticketId);
+            var admin = await IsAdministrator(userId, ct);
+            if (!admin && !await HasPermission(userId, "TICKETS_APPROVE", new HashSet<string>(["MANAGER", "TEAM_LEAD"], StringComparer.Ordinal), ct))
+                throw new UnauthorizedAccessException();
+            await using var pending = FCommand(connection, transaction, $"""
+                SELECT a.id FROM ticket_approvals a JOIN tickets t ON t.id=a.ticket_id
+                WHERE a.ticket_id=@ticket AND a.status='PENDING' AND {FScope("t")} FOR UPDATE
+                """, ("ticket", ticketId), ("actor", userId), ("admin", admin));
             var approvalId = await pending.ExecuteScalarAsync(ct) as string;
             if (approvalId is null) throw new InvalidOperationException("No pending approval exists for this ticket.");
             await using (var update = new MySqlCommand("UPDATE ticket_approvals SET status=@status,decision_note=@note,decided_by_user_id=@actor,decided_at=UTC_TIMESTAMP(6) WHERE id=@approval", connection, transaction)) { update.Parameters.AddWithValue("@status", body.Decision); update.Parameters.AddWithValue("@note", body.Note.Trim()); update.Parameters.AddWithValue("@actor", userId); update.Parameters.AddWithValue("@approval", approvalId); await update.ExecuteNonQueryAsync(ct); }
@@ -2698,8 +2913,12 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             var oldStatus = reader.GetString(0); var oldPriority = reader.GetString(1); var oldCategory = reader.GetString(2); var oldAssignee = reader.IsDBNull(3) ? null : reader.GetString(3); var clientId = reader.GetString(4); var createdAt = reader.GetDateTime(5);
             var isAdmin = reader.GetBoolean(6); var isWide = reader.GetBoolean(7) || isAdmin; var isIntern = reader.GetBoolean(8); var isStaff = reader.GetBoolean(9);
             await reader.DisposeAsync();
-            if (!isStaff || isIntern) throw new UnauthorizedAccessException();
+            if (!isStaff || (isIntern && !isWide &&
+                (body.Priority is not null || body.CategoryId is not null || body.TagIds is not null)))
+                throw new UnauthorizedAccessException();
             if (!isAdmin && oldAssignee != userId && !isWide) throw new UnauthorizedAccessException();
+            if (!isWide && (body.Status is "CLOSED" or "CANCELLED" || oldStatus is "RESOLVED" or "CLOSED" or "CANCELLED"))
+                throw new UnauthorizedAccessException();
             if (body.CategoryId is not null)
             {
                 await using var category = new MySqlCommand("SELECT 1 FROM categories WHERE id=@id AND active", connection, transaction); category.Parameters.AddWithValue("@id", body.CategoryId);
@@ -2707,7 +2926,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             }
             var tags = body.TagIds?.Distinct(StringComparer.Ordinal).ToArray();
             if (tags is not null) foreach (var tag in tags) { await using var check = new MySqlCommand("SELECT 1 FROM tags WHERE id=@id AND active", connection, transaction); check.Parameters.AddWithValue("@id", tag); if (await check.ExecuteScalarAsync(ct) is null) throw new ArgumentException("A selected tag is unavailable."); }
-            await using (var update = new MySqlCommand("UPDATE tickets SET status=COALESCE(@status,status),priority=COALESCE(@priority,priority),category_id=COALESCE(@category,category_id),resolved_at=CASE WHEN @status='RESOLVED' THEN COALESCE(resolved_at,UTC_TIMESTAMP(6)) WHEN @status IS NOT NULL AND @status<>'RESOLVED' THEN NULL ELSE resolved_at END,closed_at=CASE WHEN @status='CLOSED' THEN COALESCE(closed_at,UTC_TIMESTAMP(6)) WHEN @status IS NOT NULL AND @status<>'CLOSED' THEN NULL ELSE closed_at END,updated_at=UTC_TIMESTAMP(6) WHERE id=@ticket", connection, transaction))
+            await using (var update = new MySqlCommand("UPDATE tickets SET status=COALESCE(@status,status),priority=COALESCE(@priority,priority),category_id=COALESCE(@category,category_id),resolved_at=CASE WHEN @status IN ('RESOLVED','CLOSED') THEN COALESCE(resolved_at,UTC_TIMESTAMP(6)) WHEN @status IS NOT NULL AND @status<>'CLOSED' THEN NULL ELSE resolved_at END,closed_at=CASE WHEN @status='CLOSED' THEN COALESCE(closed_at,UTC_TIMESTAMP(6)) WHEN @status IS NOT NULL AND @status<>'CLOSED' THEN NULL ELSE closed_at END,updated_at=UTC_TIMESTAMP(6) WHERE id=@ticket", connection, transaction))
             {
                 update.Parameters.AddWithValue("@status", (object?)body.Status ?? DBNull.Value); update.Parameters.AddWithValue("@priority", (object?)body.Priority ?? DBNull.Value); update.Parameters.AddWithValue("@category", (object?)body.CategoryId ?? DBNull.Value); update.Parameters.AddWithValue("@ticket", ticketId); await update.ExecuteNonQueryAsync(ct);
             }
@@ -2741,16 +2960,20 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             {
                 await ResumeTicketSla(connection, transaction, ticketId, now, ct);
             }
-            async Task History(string action, object? previous, object? next)
+            var before = new Dictionary<string, object?>();
+            var after = new Dictionary<string, object?>();
+            async Task History(string field, string action, object? previous, object? next)
             {
+                before[field] = previous;
+                after[field] = next;
                 var oldJson = previous is null ? null : System.Text.Json.JsonSerializer.Serialize(previous);
                 var newJson = next is null ? null : System.Text.Json.JsonSerializer.Serialize(next);
                 await using var history = new MySqlCommand("INSERT INTO ticket_history(ticket_id,actor_user_id,action,previous_value,new_value,reason) VALUES(@ticket,@actor,@action,CAST(@previous AS JSON),CAST(@next AS JSON),@reason)", connection, transaction);
                 history.Parameters.AddWithValue("@ticket", ticketId); history.Parameters.AddWithValue("@actor", userId); history.Parameters.AddWithValue("@action", action); history.Parameters.AddWithValue("@previous", (object?)oldJson ?? DBNull.Value); history.Parameters.AddWithValue("@next", (object?)newJson ?? DBNull.Value); history.Parameters.AddWithValue("@reason", (object?)(body.Reason?.Trim()) ?? DBNull.Value); await history.ExecuteNonQueryAsync(ct);
             }
-            if (body.Status is not null && body.Status != oldStatus) await History("TICKET.STATUS_CHANGED", oldStatus, body.Status);
-            if (body.Priority is not null && body.Priority != oldPriority) await History("TICKET.PRIORITY_CHANGED", oldPriority, body.Priority);
-            if (body.CategoryId is not null && body.CategoryId != oldCategory) await History("TICKET.CATEGORY_CHANGED", oldCategory, body.CategoryId);
+            if (body.Status is not null && body.Status != oldStatus) await History("status", "TICKET.STATUS_CHANGED", oldStatus, body.Status);
+            if (body.Priority is not null && body.Priority != oldPriority) await History("priority", "TICKET.PRIORITY_CHANGED", oldPriority, body.Priority);
+            if (body.CategoryId is not null && body.CategoryId != oldCategory) await History("categoryId", "TICKET.CATEGORY_CHANGED", oldCategory, body.CategoryId);
             if (tags is not null)
             {
                 var oldTags = new List<string>();
@@ -2762,10 +2985,11 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
                 }
                 await using (var remove = new MySqlCommand("DELETE FROM ticket_tags WHERE ticket_id=@ticket", connection, transaction)) { remove.Parameters.AddWithValue("@ticket", ticketId); await remove.ExecuteNonQueryAsync(ct); }
                 foreach (var tag in tags) { await using var add = new MySqlCommand("INSERT INTO ticket_tags(ticket_id,tag_id,added_by_user_id) VALUES(@ticket,@tag,@actor)", connection, transaction); add.Parameters.AddWithValue("@ticket", ticketId); add.Parameters.AddWithValue("@tag", tag); add.Parameters.AddWithValue("@actor", userId); await add.ExecuteNonQueryAsync(ct); }
-                await History("TICKET.TAGS_CHANGED", oldTags, tags);
+                if (!oldTags.ToHashSet(StringComparer.Ordinal).SetEquals(tags))
+                    await History("tagIds", "TICKET.TAGS_CHANGED", oldTags, tags);
             }
-            var detail = System.Text.Json.JsonSerializer.Serialize(new { status = body.Status, priority = body.Priority, categoryId = body.CategoryId, tagIds = tags, reason = body.Reason });
-            await using (var audit = new MySqlCommand("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES(@actor,'TICKET.UPDATED','TICKET',@ticket,CAST(@details AS JSON))", connection, transaction)) { audit.Parameters.AddWithValue("@actor", userId); audit.Parameters.AddWithValue("@ticket", ticketId); audit.Parameters.AddWithValue("@details", detail); await audit.ExecuteNonQueryAsync(ct); }
+            await AddAudit(connection, transaction, userId, "TICKET.UPDATED", "TICKET", ticketId,
+                new { before, after, reason = body.Reason?.Trim() }, ct);
             await QueueTicketEvent(connection,transaction,userId,ticketId,null,"Ticket updated",ct);
             await transaction.CommitAsync(ct);
             return new UpdatedTicket(ticketId);
@@ -2892,19 +3116,24 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (!isStaff) return new TicketPage(0, [], true);
         if (!canTeam && isStaff)
             canTeam = await HasDefaultTeamPermission(connection, userId, ct);
-        if ((scope is "all" or "unassigned") && !isWide || scope == "team" && !canTeam || scope == "internal" && workScope is not ("INTERNAL" or "BOTH" or "ALL"))
+        if ((scope is "all" or "unassigned" or "review") && !isWide || scope == "team" && !canTeam || scope == "internal" && workScope is not ("INTERNAL" or "BOTH" or "ALL"))
             return new TicketPage(0, [], true);
 
         var scopePredicate = scope switch
         {
             "all" => "1=1",
             "unassigned" => "t.assigned_user_id IS NULL",
+            "review" => "t.status='RESOLVED'",
             "team" => "(NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@id) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@id AND us.site_id=t.site_id))",
             "internal" => "(t.client_id='00000000-0000-4000-8000-000000000132' AND (NOT EXISTS(SELECT 1 FROM department_users du WHERE du.user_id=@id) OR EXISTS(SELECT 1 FROM department_users du WHERE du.user_id=@id AND du.department_id=t.department_id)))",
             _ => "(t.assigned_user_id=@id OR t.created_by_user_id=@id OR EXISTS(SELECT 1 FROM ticket_collaborators tc WHERE tc.ticket_id=t.id AND tc.user_id=@id))"
         };
         var accessPredicate = isAdmin ? "1=1" : "((t.client_id IN (SELECT client_id FROM client_users WHERE user_id=@id) OR t.site_id IN (SELECT site_id FROM user_sites WHERE user_id=@id)) AND (NOT EXISTS(SELECT 1 FROM user_sites WHERE user_id=@id) OR t.site_id IN (SELECT site_id FROM user_sites WHERE user_id=@id)))";
+        accessPredicate = $"({accessPredicate}) AND {InternalTicketVisibility("t", "@id")}";
         var predicate = $"({accessPredicate}) AND ({scopePredicate}) AND (@ticketId IS NULL OR t.id=@ticketId) AND (@status IS NULL OR t.status=@status) AND (@search='' OR t.ticket_number LIKE @pattern OR t.subject LIKE @pattern OR t.description LIKE @pattern OR c.name LIKE @pattern OR r.name LIKE @pattern)";
+        if (scope != "review" && filters is not null && filters["queue"] == "true" && status is null && search.Length == 0 &&
+            filters["dashboardFilter"] != "RESOLVED_RECENTLY")
+            predicate += " AND t.status NOT IN ('CLOSED','RESOLVED')";
         var extraFilters = TicketExtraFilters(filters);
         predicate += extraFilters.Sql;
         var from = " FROM tickets t JOIN clients c ON c.id=t.client_id JOIN contacts r ON r.id=t.requester_id LEFT JOIN sites s ON s.id=t.site_id LEFT JOIN categories cat ON cat.id=t.category_id LEFT JOIN categories parentcat ON parentcat.id=cat.parent_id LEFT JOIN users u ON u.id=t.assigned_user_id LEFT JOIN ticket_sla sla ON sla.ticket_id=t.id ";
@@ -2935,14 +3164,13 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         check.Parameters.AddWithValue("@id", userId);
         if (Convert.ToInt32(await check.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture) != 1) return null;
         var clients = await ReadRows(connection, "SELECT c.id,c.name FROM clients c WHERE c.status='ACTIVE' AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.client_id=c.id AND cu.user_id=@id)) ORDER BY c.name", userId, ct);
-        var contacts = await ReadRows(connection, "SELECT x.id,x.client_id,x.name,x.email FROM contacts x WHERE x.active AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.client_id=x.client_id AND cu.user_id=@id)) ORDER BY x.name", userId, ct);
+        var contacts = await ReadRows(connection, "SELECT x.id,x.client_id,x.site_id,x.name,x.email FROM contacts x WHERE x.active AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu WHERE cu.client_id=x.client_id AND cu.user_id=@id)) ORDER BY x.name", userId, ct);
         var sites = await ReadRows(connection, "SELECT s.id,s.client_id,s.name FROM sites s WHERE s.active AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR (EXISTS(SELECT 1 FROM client_users cu WHERE cu.client_id=s.client_id AND cu.user_id=@id) AND (NOT EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@id) OR EXISTS(SELECT 1 FROM user_sites us WHERE us.user_id=@id AND us.site_id=s.id)))) ORDER BY s.name", userId, ct);
         var categories = await ReadRows(connection, "SELECT c.id,c.parent_id,CASE WHEN p.name IS NULL THEN c.name ELSE CONCAT(p.name,' → ',c.name) END AS name FROM categories c LEFT JOIN categories p ON p.id=c.parent_id WHERE c.active ORDER BY COALESCE(p.name,c.name),p.name,c.name", userId, ct);
         var tags = await ReadRows(connection, "SELECT id,name FROM tags WHERE active ORDER BY name", userId, ct);
-        var technicians = await ReadRows(connection, "SELECT DISTINCT u.id,u.display_name AS name,u.email FROM users u JOIN user_roles r ON r.user_id=u.id WHERE u.active AND r.role_code IN ('INTERN','TECHNICIAN','TEAM_LEAD','MANAGER','ADMIN') AND (EXISTS(SELECT 1 FROM user_roles WHERE user_id=@id AND role_code='ADMIN') OR EXISTS(SELECT 1 FROM client_users cu JOIN client_users mine ON mine.client_id=cu.client_id WHERE cu.user_id=u.id AND mine.user_id=@id)) ORDER BY u.display_name", userId, ct);
         var sources = await ReadRows(connection, "SELECT code,name FROM ticket_sources WHERE active ORDER BY sort_order,name", userId, ct);
         var departments = await ReadRows(connection, "SELECT id,name FROM departments WHERE active ORDER BY name", userId, ct);
-        return new { clients, contacts, sites, categories, tags, technicians, sources, departments,
+        return new { clients, contacts, sites, categories, tags, sources, departments,
             statuses = new[] { "NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "WAITING_FOR_VENDOR", "ON_HOLD", "RESOLVED", "CLOSED", "CANCELLED" },
             priorities = new[] { "P1_CRITICAL", "P2_HIGH", "P3_MEDIUM", "P4_LOW" } };
     }
@@ -2968,7 +3196,17 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         var ticket = page.Items.FirstOrDefault();
         if (ticket is null) return null;
         var comments = await ReadTicketRows(connection, "SELECT c.id,c.comment_type,c.body,c.created_at,u.display_name AS author_name FROM ticket_comments c JOIN users u ON u.id=c.author_user_id WHERE c.ticket_id=@ticket ORDER BY c.created_at,c.id", ticketId, ct);
-        var history = await ReadTicketRows(connection, "SELECT h.id,h.action,h.previous_value,h.new_value,h.reason,h.created_at,COALESCE(u.display_name,'System') AS actor_name FROM ticket_history h LEFT JOIN users u ON u.id=h.actor_user_id WHERE h.ticket_id=@ticket ORDER BY h.created_at,h.id", ticketId, ct);
+        var history = await ReadTicketRows(connection, """
+            SELECT h.id,h.action,h.previous_value,h.new_value,h.reason,h.created_at,h.actor_user_id,
+                   COALESCE(u.display_name,'System') AS actor_name
+            FROM ticket_history h LEFT JOIN users u ON u.id=h.actor_user_id
+            WHERE h.ticket_id=@ticket ORDER BY h.created_at,h.id
+            """, ticketId, ct);
+        if (!isWide) history.RemoveAll(entry => Equals(entry.GetValueOrDefault("action"), "TICKET.QA_REVIEWED"));
+        await AddTicketAssignmentNames(connection, ticketId, history, logger, ct);
+        await AddTicketActivityDetails(connection, ticketId, history, ct);
+        foreach (var entry in history)
+            entry.Remove("actor_user_id");
         var attachments = await ReadTicketRows(connection, "SELECT a.id,a.file_name,a.content_type,a.size_bytes,a.created_at,a.visibility,u.display_name AS uploaded_by FROM ticket_attachments a JOIN users u ON u.id=a.uploaded_by_user_id WHERE a.ticket_id=@ticket ORDER BY a.created_at", ticketId, ct);
         var approvals = await ReadTicketRows(connection, "SELECT a.id,a.status,a.reason,a.decision_note,a.created_at,a.decided_at,rq.display_name AS requested_by,dc.display_name AS decided_by FROM ticket_approvals a JOIN users rq ON rq.id=a.requested_by_user_id LEFT JOIN users dc ON dc.id=a.decided_by_user_id WHERE a.ticket_id=@ticket ORDER BY a.created_at DESC", ticketId, ct);
         var collaborators = await ReadTicketRows(connection, "SELECT c.user_id,u.display_name AS name,c.reason,c.created_at FROM ticket_collaborators c JOIN users u ON u.id=c.user_id WHERE c.ticket_id=@ticket ORDER BY u.display_name", ticketId, ct);
@@ -3050,7 +3288,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
             var role = reader.GetString(0);
             var defaults = role switch
             {
-                "TECHNICIAN" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN" },
+                "TECHNICIAN" => DefaultRolePolicy("TECHNICIAN"),
                 "TEAM_LEAD" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "CATEGORY_MANAGE", "TAGS_MANAGE", "REPORTS_VIEW" },
                 "MANAGER" or "ADMIN" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "TICKETS_APPROVE", "CATEGORY_MANAGE", "TAGS_MANAGE", "SLA_MANAGE", "REPORTS_VIEW", "AUDIT_VIEW" },
                 _ => Array.Empty<string>()
@@ -3135,6 +3373,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         var changeAccess = reader.GetString(4);
         await reader.DisposeAsync();
         var rawRoles = await ReadStrings(connection, "SELECT role_code FROM user_roles WHERE user_id=@id ORDER BY role_code", id, ct);
+        changeAccess = EffectiveChangeAccess(changeAccess, rawRoles.Contains("TECHNICIAN"), rawRoles.Contains("TEAM_LEAD"));
         var clientIds = await ReadStrings(connection, "SELECT client_id FROM client_users WHERE user_id=@id ORDER BY client_id", id, ct);
         var siteIds = await ReadStrings(connection, "SELECT site_id FROM user_sites WHERE user_id=@id ORDER BY site_id", id, ct);
         var departmentIds = await ReadStrings(connection, "SELECT department_id FROM department_users WHERE user_id=@id ORDER BY department_id", id, ct);
@@ -3152,10 +3391,10 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         }
         else if (chosen == "client")
         {
-            if (!rawRoles.Contains("USER", StringComparer.Ordinal)) return null;
+            if (!admin && !rawRoles.Contains("USER", StringComparer.Ordinal) && !(scope is "INTERNAL" or "BOTH" && rawRoles.Any(r => r is "TECHNICIAN" or "TEAM_LEAD" or "MANAGER" or "INTERN"))) return null;
             roles = ["USER"];
             groups = [];
-            effectiveScope = "CLIENT";
+            effectiveScope = scope is "INTERNAL" or "BOTH" ? scope : "CLIENT";
             effectiveChange = "NONE";
         }
         else if (chosen == "management")
@@ -3167,7 +3406,7 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         else if (chosen == "operations")
         {
             if (!rawRoles.Any(r => r is "ADMIN" or "MANAGER" or "TEAM_LEAD" or "TECHNICIAN" or "INTERN")) return null;
-            roles = [rawRoles.Any(r => r is "ADMIN" or "MANAGER" or "TEAM_LEAD" or "TECHNICIAN") ? "TECHNICIAN" : "INTERN"];
+            roles = admin ? ["ADMIN"] : rawRoles.Contains("TEAM_LEAD", StringComparer.Ordinal) ? ["TEAM_LEAD"] : rawRoles.Contains("MANAGER", StringComparer.Ordinal) ? ["MANAGER"] : [rawRoles.Contains("TECHNICIAN", StringComparer.Ordinal) ? "TECHNICIAN" : "INTERN"];
             if (roles[0] == "INTERN") groups = [];
             effectiveChange = effectiveChange == "NONE" ? "NONE" : "CONTRIBUTOR";
         }
@@ -3197,12 +3436,12 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         if (role == "ADMIN") return ["*"];
         var defaults = role switch
         {
-            "TECHNICIAN" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN" },
-            "TEAM_LEAD" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "CATEGORY_MANAGE", "TAGS_MANAGE", "REPORTS_VIEW" },
+            "TECHNICIAN" => DefaultRolePolicy("TECHNICIAN"),
+            "TEAM_LEAD" => DefaultRolePolicy("TEAM_LEAD"),
             "MANAGER" => new[] { "TICKETS_TEAM_VIEW", "TICKETS_ASSIGN", "TICKETS_APPROVE", "CATEGORY_MANAGE", "TAGS_MANAGE", "SLA_MANAGE", "REPORTS_VIEW", "AUDIT_VIEW" },
             _ => Array.Empty<string>()
         };
-        var ceiling = role is "MANAGER" or "TEAM_LEAD" ? StaffPermissions.Append("AUDIT_VIEW").ToHashSet(StringComparer.Ordinal) : role == "TECHNICIAN" ? StaffPermissions.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal);
+        var ceiling = AvailableRolePolicy(role).ToHashSet(StringComparer.Ordinal);
         await using (var rolePolicyCommand = new MySqlCommand("SELECT permissions FROM role_access_policies WHERE role_code=@id", connection))
         {
             rolePolicyCommand.Parameters.AddWithValue("@id", role);
@@ -3216,7 +3455,8 @@ public sealed partial class MySqlStore(IConfiguration configuration, IMailTransp
         var allowedByUser = isAdmin ? Array.Empty<string>() : await ReadJsonPermissionList(connection, "SELECT allow_permissions FROM user_access_policies WHERE user_id=@id", userId, ct);
         var deniedByUser = isAdmin ? Array.Empty<string>() : await ReadJsonPermissionList(connection, "SELECT deny_permissions FROM user_access_policies WHERE user_id=@id", userId, ct);
         var denied = deniedByUser.ToHashSet(StringComparer.Ordinal);
-        return defaults.Concat(groupPermissions.Where(StaffPermissions.Contains)).Concat(allowedByUser)
+        var leadAccess = role == "TEAM_LEAD" ? new[] { "TICKETS_APPROVE", "AUDIT_VIEW" } : Array.Empty<string>();
+        return defaults.Concat(leadAccess).Concat(groupPermissions.Where(StaffPermissions.Contains)).Concat(allowedByUser)
             .Where(p => ceiling.Contains(p) && !denied.Contains(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
 
@@ -3280,7 +3520,7 @@ public sealed record CreatedTicketAttachment(string Id);
 public sealed record TicketAttachmentFile(string FileName, string ContentType, byte[] Content);
 public sealed class CreateContactRequest { public string ClientId { get; init; } = ""; public string? SiteId { get; init; } public string Name { get; init; } = ""; public string? Email { get; init; } public string? Phone { get; init; } }
 public sealed class CreateClientRequest { public string Name { get; init; } = ""; public string? TicketPrefix { get; init; } public string? PrimaryEmail { get; init; } public string? PrimaryPhone { get; init; } public string? Notes { get; init; } }
-public sealed class CreateSiteRequest { public string ClientId { get; init; } = ""; public string Name { get; init; } = ""; public string? TicketPrefix { get; init; } public string? Address { get; init; } }
+public sealed class CreateSiteRequest { public string? EmailDomain { get; init; } public string ClientId { get; init; } = ""; public string Name { get; init; } = ""; public string? TicketPrefix { get; init; } public string? Address { get; init; } }
 public sealed class CreateAssetRequest { public string ClientId { get; init; } = ""; public string? SiteId { get; init; } public string Name { get; init; } = ""; public string AssetType { get; init; } = ""; public string? SerialNumber { get; init; } public string? ExternalReference { get; init; } }
 public sealed class SlaCalendarRequest { public string Name { get; init; } = ""; public string Timezone { get; init; } = ""; public List<int> WorkingDays { get; init; } = []; public string WorkStart { get; init; } = ""; public string WorkEnd { get; init; } = ""; public bool Active { get; init; } public List<SlaHolidayRequest> Holidays { get; init; } = []; }
 public sealed class SlaPolicyRequest { public int ResponseMinutes { get; init; } public int ResolutionMinutes { get; init; } public int WarningPercent { get; init; } public bool Active { get; init; } public string CalendarId { get; init; } = ""; public bool ApplyToOpenTickets { get; init; } }
